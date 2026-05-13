@@ -1,0 +1,501 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>VocabMaster - 智能英语单词学习</title>
+<link rel="stylesheet" href="/static/css/style.css">
+</head>
+<body>
+
+<!-- ========== App Container ========== -->
+<div class="app-container" id="app">
+
+  <!-- ===== Dashboard Page ===== -->
+  <div class="page active" id="page-dashboard">
+    <div class="top-bar">
+      <div>
+        <h1>✨ VocabMaster</h1>
+        <div class="subtitle" id="greeting-text">今天也要加油哦</div>
+      </div>
+      <div class="streak-badge" id="streak-badge">
+        <span class="fire">🔥</span>
+        <span id="streak-count">0</span>天
+      </div>
+    </div>
+
+    <div class="checkin-section">
+      <button class="checkin-btn" id="checkin-btn" onclick="handleCheckin()">
+        <span class="checkin-icon">✅</span>
+        <span id="checkin-text">打卡</span>
+      </button>
+      <div style="margin-top:10px;font-size:.8rem;color:var(--text-secondary)" id="checkin-status">今日尚未打卡</div>
+    </div>
+
+    <div class="dashboard-stats">
+      <div class="stat-card">
+        <div class="stat-icon">📝</div>
+        <div class="stat-value" id="stat-new">0</div>
+        <div class="stat-label">今日新学</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-icon">🔄</div>
+        <div class="stat-value" id="stat-review">0</div>
+        <div class="stat-label">今日复习</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-icon">📚</div>
+        <div class="stat-value" id="stat-total">0</div>
+        <div class="stat-label">已学单词</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-icon">🎯</div>
+        <div class="stat-value" id="stat-mastered">0</div>
+        <div class="stat-label">已掌握</div>
+      </div>
+    </div>
+
+    <!-- 双记忆率指标 -->
+    <div class="card" style="padding:14px 16px">
+      <div class="card-title" style="margin-bottom:8px;font-size:.9rem">📊 记忆率</div>
+      <div class="memory-rate-section">
+        <div class="memory-rate-item">
+          <span class="rate-label">历史记忆率</span>
+          <div class="dual-bar"><div class="bar-blue" id="history-rate-bar" style="width:0%"></div></div>
+          <span class="rate-value" id="history-rate-val">0%</span>
+        </div>
+        <div class="memory-rate-item">
+          <span class="rate-label">近期记忆率</span>
+          <div class="dual-bar"><div class="bar-green" id="recent-rate-bar" style="width:0%"></div></div>
+          <span class="rate-value" id="recent-rate-val">0%</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- 标签统计 -->
+    <div class="card" style="padding:14px 16px" id="flag-stats-card">
+      <div class="card-title" style="margin-bottom:8px;font-size:.9rem">🏷️ 单词标签</div>
+      <div class="flag-stats-grid" id="flag-stats-grid"></div>
+    </div>
+
+    <!-- 三轮进度 -->
+    <div class="card" style="padding:14px 16px">
+      <div class="card-title" style="margin-bottom:8px;font-size:.9rem">📊 三轮记忆进度</div>
+      <div class="stage-progress" id="stage-progress">
+        <div class="stage-item"><span class="stage-dot stage1"></span>初次学习 <b id="stage1-cnt">0</b></div>
+        <div class="stage-item"><span class="stage-dot stage2"></span>间隔复习 <b id="stage2-cnt">0</b></div>
+        <div class="stage-item"><span class="stage-dot stage3"></span>输出验证 <b id="stage3-cnt">0</b></div>
+        <div class="stage-item"><span class="stage-dot mastered"></span>已掌握 <b id="mastered-cnt">0</b></div>
+      </div>
+    </div>
+
+    <!-- 今日复习计划 -->
+    <div class="card" style="padding:14px 16px" id="review-plan-card" style="display:none">
+      <div class="card-title" style="margin-bottom:8px;font-size:.9rem">⏰ 今日复习计划</div>
+      <div id="review-plan-list" class="review-plan-list"></div>
+    </div>
+
+    <!-- 每日新词上限 -->
+    <div style="margin-top:8px;text-align:center;display:flex;align-items:center;justify-content:center;gap:8px">
+      <span style="font-size:.85rem;color:var(--text-secondary)">每日新词上限:</span>
+      <input type="number" id="daily-limit-input" min="1" max="100" value="15" style="width:50px;text-align:center;border:1px solid var(--border);border-radius:6px;padding:2px 4px;font-size:.85rem">
+      <button class="btn btn-ghost btn-sm" onclick="saveDailyLimit()">保存</button>
+    </div>
+
+    <div class="today-tasks">
+      <div class="task-item" onclick="startLearning()">
+        <div class="task-left">
+          <span class="task-icon">📖</span>
+          <div class="task-info">
+            <div class="task-name">学习新词 <span style="font-size:.7rem;color:var(--primary);font-weight:400">第一轮</span></div>
+            <div class="task-desc" id="task-new-desc">继续加油</div>
+          </div>
+        </div>
+        <div class="task-right">
+          <span class="task-count" id="task-new-count">0</span>
+          <span class="task-arrow">›</span>
+        </div>
+      </div>
+      <div class="task-item" onclick="navigateTo('review')">
+        <div class="task-left">
+          <span class="task-icon">🔄</span>
+          <div class="task-info">
+            <div class="task-name">复习旧词 <span style="font-size:.7rem;color:var(--primary);font-weight:400">第二/三轮</span></div>
+            <div class="task-desc" id="task-review-desc">暂无待复习</div>
+          </div>
+        </div>
+        <div class="task-right">
+          <span class="task-count" id="task-review-count">0</span>
+          <span class="task-arrow">›</span>
+        </div>
+      </div>
+      <div class="task-item" onclick="startYesterdayReview()">
+        <div class="task-left">
+          <span class="task-icon">🕐</span>
+          <div class="task-info">
+            <div class="task-name">昨日重现 <span style="font-size:.7rem;color:var(--warning);font-weight:400">易错词</span></div>
+            <div class="task-desc" id="task-yesterday-desc">巩固遗忘词汇</div>
+          </div>
+        </div>
+        <div class="task-right">
+          <span class="task-count" id="task-yesterday-count">0</span>
+          <span class="task-arrow">›</span>
+        </div>
+      </div>
+    </div>
+
+    <div style="margin-top:12px;text-align:center">
+      <button class="btn btn-ghost btn-sm" onclick="showSettings()">⚙️ 设置</button>
+    </div>
+  </div>
+
+  <!-- ===== Learning Page ===== -->
+  <div class="page" id="page-learn">
+    <div class="learn-header">
+      <div class="learn-progress" id="learn-progress">1 / 10</div>
+      <div class="learn-stage-badge" id="learn-stage-badge">第一轮 · 初次学习</div>
+      <div class="learn-close" onclick="exitLearning()">✕</div>
+    </div>
+    <div class="progress-bar" style="margin-bottom:16px">
+      <div class="fill" id="learn-progress-bar" style="width:10%"></div>
+    </div>
+
+    <div class="word-card-container" id="learn-card-container">
+      <!-- Word card will be rendered here -->
+    </div>
+
+    <div id="learn-actions-container">
+      <!-- Action buttons will be rendered here -->
+    </div>
+  </div>
+
+  <!-- ===== Review Page ===== -->
+  <div class="page" id="page-review">
+    <div class="top-bar">
+      <div><h1>🔄 复习</h1></div>
+      <button class="btn btn-ghost btn-sm" id="review-back-btn" onclick="exitReview()" style="display:none">返回</button>
+    </div>
+
+    <div id="review-mode-select">
+      <p style="font-size:.85rem;color:var(--text-secondary);margin-bottom:12px">选择复习模式</p>
+      <div class="review-mode-selector" id="review-modes">
+        <!-- Mode cards rendered here -->
+      </div>
+    </div>
+
+    <div id="review-session" style="display:none">
+      <div class="review-header">
+        <span class="review-count" id="review-count">1 / 10</span>
+        <div class="progress-bar" style="width:120px">
+          <div class="fill" id="review-progress-bar" style="width:10%"></div>
+        </div>
+      </div>
+      <div id="review-card-area">
+        <!-- Review card rendered here -->
+      </div>
+    </div>
+
+    <div id="review-complete" style="display:none">
+      <!-- Completion screen rendered here -->
+    </div>
+  </div>
+
+  <!-- ===== Word Books Page ===== -->
+  <div class="page" id="page-books">
+    <div class="top-bar">
+      <div><h1>📚 词书</h1></div>
+      <button class="btn btn-primary btn-sm" onclick="showImportModal()">📥 导入</button>
+    </div>
+    <div id="books-list">
+      <!-- Book cards rendered here -->
+    </div>
+  </div>
+
+  <!-- ===== Roots Page ===== -->
+  <div class="page" id="page-roots">
+    <div class="top-bar">
+      <div><h1>🧬 词根词缀</h1></div>
+    </div>
+    <div id="roots-list">
+      <!-- Root groups rendered here -->
+    </div>
+  </div>
+
+  <!-- ===== Ebbinghaus Calendar Page ===== -->
+  <div class="page" id="page-calendar">
+    <div class="top-bar">
+      <div><h1>📅 艾宾浩斯日历</h1></div>
+    </div>
+    <div class="card" style="padding:14px 16px">
+      <div class="calendar-section">
+        <div class="calendar-header">
+          <button onclick="changeCalMonth(-1)">◀</button>
+          <span class="month-title" id="eb-calendar-month"></span>
+          <button onclick="changeCalMonth(1)">▶</button>
+        </div>
+        <div class="calendar-grid" id="eb-calendar-grid"></div>
+      </div>
+      <div class="cal-legend" style="margin-top:10px;display:flex;gap:12px;font-size:.78rem;justify-content:center">
+        <span><span class="legend-dot" style="display:inline-block;width:10px;height:10px;border-radius:50%;background:var(--info);vertical-align:middle;margin-right:3px"></span>计划复习</span>
+        <span><span class="legend-dot" style="display:inline-block;width:10px;height:10px;border-radius:50%;background:var(--success);vertical-align:middle;margin-right:3px"></span>额外复习</span>
+      </div>
+      <div id="eb-calendar-detail" style="margin-top:12px"></div>
+    </div>
+  </div>
+
+  <!-- ===== AI Cloze Page ===== -->
+  <div class="page" id="page-cloze">
+    <div class="top-bar">
+      <div><h1>📝 AI 完形填空</h1></div>
+    </div>
+    <div id="cloze-content">
+      <div class="empty-state">
+        <div class="empty-icon">🤖</div>
+        <div class="empty-text">基于今日所学单词生成完形填空</div>
+        <button class="btn btn-primary" onclick="generateCloze()">生成完形填空</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ===== AI Writing Page ===== -->
+  <div class="page" id="page-writing">
+    <div class="top-bar">
+      <div><h1>✍️ AI 作文优化</h1></div>
+    </div>
+    <div class="writing-container">
+      <div class="writing-tabs">
+        <button class="writing-tab active" onclick="switchWritingTab('text')">✏️ 文本输入</button>
+        <button class="writing-tab" onclick="switchWritingTab('image')">📷 图片上传</button>
+        <button class="writing-tab" onclick="switchWritingTab('file')">📄 文件上传</button>
+      </div>
+      <div id="writing-input-text" class="writing-input-area">
+        <textarea id="writing-textarea" placeholder="在此输入你的英语作文..." rows="8"></textarea>
+      </div>
+      <div id="writing-input-image" class="writing-input-area" style="display:none">
+        <div class="upload-zone" id="writing-image-zone" onclick="document.getElementById('writing-image-input').click()">
+          <div class="upload-icon">📷</div>
+          <div>点击或拖拽上传作文图片</div>
+          <input type="file" id="writing-image-input" accept="image/*" style="display:none" onchange="handleWritingImage(this)">
+        </div>
+      </div>
+      <div id="writing-input-file" class="writing-input-area" style="display:none">
+        <div class="upload-zone" onclick="document.getElementById('writing-file-input').click()">
+          <div class="upload-icon">📄</div>
+          <div>点击上传 .txt 或 .docx 文件</div>
+          <input type="file" id="writing-file-input" accept=".txt,.docx" style="display:none" onchange="handleWritingFile(this)">
+        </div>
+      </div>
+      <button class="btn btn-primary btn-block" onclick="optimizeWriting()" id="writing-submit-btn" style="margin-top:12px">🤖 AI 优化</button>
+      <div id="writing-result" style="margin-top:16px"></div>
+    </div>
+  </div>
+
+  <!-- ===== Statistics Page ===== -->
+  <div class="page" id="page-stats">
+    <div class="top-bar">
+      <div><h1>📊 统计</h1></div>
+    </div>
+
+    <div class="stats-overview" id="stats-overview">
+      <!-- Stats overview rendered here -->
+    </div>
+
+    <!-- 双记忆率 -->
+    <div class="card" style="padding:14px 16px">
+      <div class="card-title" style="margin-bottom:8px;font-size:.9rem">📊 双记忆率</div>
+      <div class="memory-rate-section">
+        <div class="memory-rate-item">
+          <span class="rate-label">历史记忆率</span>
+          <div class="dual-bar"><div class="bar-blue" id="stats-history-rate-bar" style="width:0%"></div></div>
+          <span class="rate-value" id="stats-history-rate-val">0%</span>
+        </div>
+        <div class="memory-rate-item">
+          <span class="rate-label">近期记忆率</span>
+          <div class="dual-bar"><div class="bar-green" id="stats-recent-rate-bar" style="width:0%"></div></div>
+          <span class="rate-value" id="stats-recent-rate-val">0%</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-title">🎯 三轮进度</div>
+      <div class="stage-progress" id="stats-stage-progress"></div>
+    </div>
+
+    <div class="card">
+      <div class="card-title">🎯 掌握程度分布</div>
+      <div class="mastery-distribution" id="mastery-bar"></div>
+      <div class="mastery-legend" id="mastery-legend"></div>
+    </div>
+
+    <div class="card">
+      <div class="card-title">📅 学习日历</div>
+      <div class="calendar-section">
+        <div class="calendar-header">
+          <button onclick="changeMonth(-1)">◀</button>
+          <span class="month-title" id="calendar-month"></span>
+          <button onclick="changeMonth(1)">▶</button>
+        </div>
+        <div class="calendar-grid" id="calendar-grid"></div>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-title">📈 近7日学习量</div>
+      <div class="daily-chart" id="daily-chart"></div>
+      <div class="chart-labels" id="daily-chart-labels"></div>
+    </div>
+  </div>
+
+</div>
+
+<!-- ========== Bottom Navigation ========== -->
+<div class="bottom-nav" id="bottom-nav">
+  <div class="nav-item active" onclick="navigateTo('dashboard')" data-page="dashboard">
+    <span class="nav-icon">🏠</span>
+    <span class="nav-label">首页</span>
+  </div>
+  <div class="nav-item" onclick="navigateTo('learn')" data-page="learn">
+    <span class="nav-icon">📖</span>
+    <span class="nav-label">学习</span>
+  </div>
+  <div class="nav-item" onclick="navigateTo('review')" data-page="review">
+    <span class="nav-icon">🔄</span>
+    <span class="nav-label">复习</span>
+  </div>
+  <div class="nav-item" onclick="navigateTo('books')" data-page="books">
+    <span class="nav-icon">📚</span>
+    <span class="nav-label">词书</span>
+  </div>
+  <div class="nav-item" onclick="navigateTo('more')" data-page="more">
+    <span class="nav-icon">⋯</span>
+    <span class="nav-label">更多</span>
+  </div>
+</div>
+
+<!-- ========== More Menu ========== -->
+<div class="modal-overlay" id="more-menu">
+  <div class="modal" style="max-width:300px">
+    <h2>⋯ 更多功能</h2>
+    <div class="more-menu-items">
+      <div class="more-item" onclick="navigateTo('calendar');closeModal('more-menu')">
+        <span class="more-icon">📅</span>
+        <div><div class="more-name">艾宾浩斯日历</div><div class="more-desc">查看复习计划日历</div></div>
+      </div>
+      <div class="more-item" onclick="navigateTo('roots');closeModal('more-menu')">
+        <span class="more-icon">🧬</span>
+        <div><div class="more-name">词根词缀</div><div class="more-desc">按词根分类学习</div></div>
+      </div>
+      <div class="more-item" onclick="navigateTo('cloze');closeModal('more-menu')">
+        <span class="more-icon">📝</span>
+        <div><div class="more-name">AI 完形填空</div><div class="more-desc">基于学习单词生成完形填空</div></div>
+      </div>
+      <div class="more-item" onclick="navigateTo('writing');closeModal('more-menu')">
+        <span class="more-icon">✍️</span>
+        <div><div class="more-name">AI 作文优化</div><div class="more-desc">语法纠正、用词优化、评分</div></div>
+      </div>
+      <div class="more-item" onclick="navigateTo('stats');closeModal('more-menu')">
+        <span class="more-icon">📊</span>
+        <div><div class="more-name">学习统计</div><div class="more-desc">查看学习数据和进度</div></div>
+      </div>
+      <div class="more-item" onclick="showSettings();closeModal('more-menu')">
+        <span class="more-icon">⚙️</span>
+        <div><div class="more-name">设置</div><div class="more-desc">学习设置、AI 配置</div></div>
+      </div>
+    </div>
+    <button class="btn btn-ghost btn-block close-btn" onclick="closeModal('more-menu')">关闭</button>
+  </div>
+</div>
+
+<!-- ========== Settings Modal ========== -->
+<div class="modal-overlay" id="settings-modal">
+  <div class="modal">
+    <h2>⚙️ 设置</h2>
+    <div class="setting-section-title">学习设置</div>
+    <div class="setting-item">
+      <div class="setting-label">每日新学单词数<small>每天学习的新单词数量</small></div>
+      <div class="setting-control"><input type="number" id="setting-daily-new" min="5" max="50" value="10"></div>
+    </div>
+    <div class="setting-item">
+      <div class="setting-label">每日复习上限<small>每天复习单词的最大数量</small></div>
+      <div class="setting-control"><input type="number" id="setting-daily-review" min="10" max="100" value="30"></div>
+    </div>
+    <div class="setting-item">
+      <div class="setting-label">🎯 学习模式正确率阈值<small>新词需达到此正确率才能通过（50%-90%）</small></div>
+      <div class="setting-control"><input type="number" id="setting-learn-threshold" min="50" max="90" value="70" style="width:60px"> <span style="font-size:.8rem">%</span></div>
+    </div>
+    <div class="setting-item">
+      <div class="setting-label">🌙 熬夜模式<small>凌晨N点前算作前一天学习</small></div>
+      <div class="setting-control"><input type="number" id="setting-delay-hours" min="0" max="12" value="4" style="width:50px"> <span style="font-size:.8rem">点前</span></div>
+    </div>
+    <div class="setting-item">
+      <div class="setting-label">🗑️ 重置学习数据<small>清除所有学习进度</small></div>
+      <div class="setting-control"><button class="btn btn-danger btn-sm" onclick="resetAllData()">重置</button></div>
+    </div>
+
+    <div class="setting-section-title" style="margin-top:16px">🤖 AI 配置</div>
+    <div class="setting-item">
+      <div class="setting-label">API Key<small>大模型 API 密钥</small></div>
+      <div class="setting-control" style="flex:1;max-width:200px"><input type="password" id="setting-llm-key" placeholder="sk-..." style="width:100%;padding:6px 8px;border:1px solid var(--border);border-radius:6px;font-size:.85rem"></div>
+    </div>
+    <div class="setting-item">
+      <div class="setting-label">API Base URL<small>OpenAI 兼容接口地址</small></div>
+      <div class="setting-control" style="flex:1;max-width:200px"><input type="text" id="setting-llm-base" value="https://api.openai.com/v1" style="width:100%;padding:6px 8px;border:1px solid var(--border);border-radius:6px;font-size:.8rem"></div>
+    </div>
+    <div class="setting-item">
+      <div class="setting-label">Model<small>模型名称</small></div>
+      <div class="setting-control" style="flex:1;max-width:200px"><input type="text" id="setting-llm-model" value="gpt-3.5-turbo" style="width:100%;padding:6px 8px;border:1px solid var(--border);border-radius:6px;font-size:.85rem"></div>
+    </div>
+    <div id="llm-status" style="font-size:.8rem;color:var(--text-secondary);margin:4px 0 8px"></div>
+
+    <button class="btn btn-primary btn-block close-btn" onclick="saveSettings()">保存</button>
+  </div>
+</div>
+
+<!-- ========== Note Edit Modal ========== -->
+<div class="modal-overlay" id="note-modal">
+  <div class="modal" style="max-width:360px">
+    <h2>📝 编辑笔记</h2>
+    <textarea id="note-textarea" rows="4" placeholder="输入你的笔记..." style="width:100%;padding:12px;border:1px solid var(--border);border-radius:var(--radius-sm);resize:vertical;font-size:.9rem;line-height:1.6;margin-bottom:12px"></textarea>
+    <div class="btn-group" style="justify-content:center">
+      <button class="btn btn-ghost" onclick="closeModal('note-modal')">取消</button>
+      <button class="btn btn-primary" onclick="saveCurrentNote()">保存</button>
+    </div>
+  </div>
+</div>
+
+<!-- ========== Import Book Modal ========== -->
+<div class="modal-overlay" id="import-modal">
+  <div class="modal">
+    <h2>📥 导入词书</h2>
+    <p style="font-size:.82rem;color:var(--text-secondary);margin-bottom:12px">支持 .xlsx / .xls / .csv 文件，表头必须包含 word 列</p>
+    
+    <!-- 词书名称输入 -->
+    <div style="margin-bottom:16px">
+      <label style="display:block;font-size:.85rem;font-weight:500;margin-bottom:6px;color:var(--text-primary)">词书名称</label>
+      <input type="text" id="import-book-name" placeholder="留空则使用文件名" 
+             style="width:100%;padding:10px 12px;border:1px solid var(--border-color);border-radius:var(--radius-sm);
+                    background:var(--primary-bg);color:var(--text-primary);font-size:.9rem;outline:none;
+                    transition:border-color .2s"
+             onfocus="this.style.borderColor='var(--primary)'" 
+             onblur="this.style.borderColor='var(--border-color)'">
+    </div>
+    
+    <div class="upload-zone" id="import-drop-zone" onclick="document.getElementById('import-file-input').click()">
+      <div class="upload-icon">📂</div>
+      <div>点击或拖拽文件到此处</div>
+      <div style="font-size:.75rem;color:var(--text-muted);margin-top:4px">支持 .xlsx, .xls, .csv</div>
+      <input type="file" id="import-file-input" accept=".xlsx,.xls,.csv" style="display:none" onchange="handleImportFile(this)">
+    </div>
+    <div id="import-progress" style="display:none;margin-top:12px">
+      <div class="loading-spinner"></div>
+      <div style="text-align:center;font-size:.85rem;color:var(--text-secondary);margin-top:8px">正在导入...</div>
+    </div>
+    <div id="import-result" style="display:none;margin-top:12px"></div>
+    <button class="btn btn-ghost btn-block close-btn" onclick="closeModal('import-modal')" style="margin-top:12px">关闭</button>
+  </div>
+</div>
+
+<script src="/static/js/app.js?v=5"></script>
+</body>
+</html>

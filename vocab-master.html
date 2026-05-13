@@ -1,0 +1,1840 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>VocabMaster - 智能英语单词学习</title>
+<style>
+/* ========== Reset & Base ========== */
+*{margin:0;padding:0;box-sizing:border-box}
+html{font-size:16px;-webkit-text-size-adjust:100%}
+body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI','PingFang SC','Hiragino Sans GB','Microsoft YaHei',sans-serif;background:#f0f2f5;color:#2c3e50;line-height:1.6;min-height:100vh;overflow-x:hidden}
+a{text-decoration:none;color:inherit}
+button{border:none;cursor:pointer;font-family:inherit;font-size:inherit}
+input{font-family:inherit;font-size:inherit}
+ul,ol{list-style:none}
+
+/* ========== CSS Variables ========== */
+:root{
+  --primary:#3a5ba0;
+  --primary-light:#5a7bc0;
+  --primary-dark:#2a4580;
+  --primary-bg:#eef2f9;
+  --success:#27ae60;
+  --success-light:#2ecc71;
+  --warning:#e67e22;
+  --danger:#e74c3c;
+  --info:#3498db;
+  --bg:#f0f2f5;
+  --card:#ffffff;
+  --text:#2c3e50;
+  --text-secondary:#7f8c8d;
+  --text-muted:#bdc3c7;
+  --border:#e8ecf1;
+  --shadow:0 2px 12px rgba(44,62,80,0.08);
+  --shadow-lg:0 4px 24px rgba(44,62,80,0.12);
+  --radius:12px;
+  --radius-sm:8px;
+  --nav-height:60px;
+}
+
+/* ========== Layout ========== */
+.app-container{max-width:480px;margin:0 auto;min-height:100vh;background:var(--bg);position:relative}
+.page{display:none;padding:16px;padding-bottom:calc(var(--nav-height) + 24px);min-height:100vh;animation:fadeIn .3s ease}
+.page.active{display:block}
+@keyframes fadeIn{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:translateY(0)}}
+
+/* ========== Top Bar ========== */
+.top-bar{display:flex;align-items:center;justify-content:space-between;padding:12px 0;margin-bottom:16px}
+.top-bar h1{font-size:1.3rem;font-weight:700;color:var(--primary)}
+.top-bar .subtitle{font-size:.8rem;color:var(--text-secondary);margin-top:2px}
+.streak-badge{display:flex;align-items:center;gap:4px;background:var(--primary-bg);padding:6px 12px;border-radius:20px;font-size:.85rem;font-weight:600;color:var(--primary)}
+.streak-badge .fire{font-size:1.1rem}
+
+/* ========== Bottom Navigation ========== */
+.bottom-nav{position:fixed;bottom:0;left:50%;transform:translateX(-50%);width:100%;max-width:480px;height:var(--nav-height);background:var(--card);display:flex;align-items:center;justify-content:space-around;box-shadow:0 -2px 12px rgba(0,0,0,0.06);z-index:100;border-top:1px solid var(--border)}
+.nav-item{display:flex;flex-direction:column;align-items:center;gap:2px;padding:6px 12px;border-radius:var(--radius-sm);transition:all .2s;cursor:pointer;-webkit-tap-highlight-color:transparent}
+.nav-item .nav-icon{font-size:1.4rem;line-height:1}
+.nav-item .nav-label{font-size:.7rem;color:var(--text-secondary);font-weight:500}
+.nav-item.active{color:var(--primary)}
+.nav-item.active .nav-label{color:var(--primary);font-weight:600}
+.nav-item .nav-badge{position:absolute;top:2px;right:2px;background:var(--danger);color:#fff;font-size:.6rem;min-width:16px;height:16px;border-radius:8px;display:flex;align-items:center;justify-content:center;font-weight:600}
+.nav-item{position:relative}
+
+/* ========== Card ========== */
+.card{background:var(--card);border-radius:var(--radius);padding:20px;box-shadow:var(--shadow);margin-bottom:16px}
+.card-title{font-size:1rem;font-weight:600;color:var(--text);margin-bottom:12px;display:flex;align-items:center;gap:8px}
+
+/* ========== Buttons ========== */
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:6px;padding:10px 20px;border-radius:var(--radius-sm);font-weight:600;font-size:.9rem;transition:all .2s;-webkit-tap-highlight-color:transparent}
+.btn-primary{background:var(--primary);color:#fff}
+.btn-primary:hover{background:var(--primary-light)}
+.btn-primary:active{transform:scale(.97)}
+.btn-success{background:var(--success);color:#fff}
+.btn-warning{background:var(--warning);color:#fff}
+.btn-danger{background:var(--danger);color:#fff}
+.btn-outline{background:transparent;border:2px solid var(--primary);color:var(--primary)}
+.btn-ghost{background:transparent;color:var(--primary);padding:8px 12px}
+.btn-lg{padding:14px 28px;font-size:1rem;border-radius:var(--radius)}
+.btn-sm{padding:6px 14px;font-size:.8rem}
+.btn-block{width:100%;justify-content:center}
+.btn:disabled{opacity:.5;cursor:not-allowed;transform:none!important}
+.btn-group{display:flex;gap:8px;flex-wrap:wrap}
+
+/* ========== Progress Bar ========== */
+.progress-bar{height:8px;background:var(--border);border-radius:4px;overflow:hidden}
+.progress-bar .fill{height:100%;border-radius:4px;transition:width .5s ease;background:linear-gradient(90deg,var(--primary),var(--primary-light))}
+.progress-text{font-size:.8rem;color:var(--text-secondary);margin-top:4px}
+
+/* ========== Dashboard ========== */
+.dashboard-stats{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:16px}
+.stat-card{background:var(--card);border-radius:var(--radius);padding:16px;box-shadow:var(--shadow);text-align:center}
+.stat-card .stat-icon{font-size:1.6rem;margin-bottom:4px}
+.stat-card .stat-value{font-size:1.5rem;font-weight:700;color:var(--primary)}
+.stat-card .stat-label{font-size:.75rem;color:var(--text-secondary);margin-top:2px}
+
+.checkin-section{text-align:center;margin-bottom:16px}
+.checkin-btn{width:120px;height:120px;border-radius:50%;background:linear-gradient(135deg,var(--primary),var(--primary-light));color:#fff;font-size:1.1rem;font-weight:700;display:flex;flex-direction:column;align-items:center;justify-content:center;margin:0 auto;box-shadow:0 4px 20px rgba(58,91,160,0.35);transition:all .3s;cursor:pointer;border:none}
+.checkin-btn:hover{transform:scale(1.05);box-shadow:0 6px 28px rgba(58,91,160,0.45)}
+.checkin-btn:active{transform:scale(.95)}
+.checkin-btn.checked{background:linear-gradient(135deg,var(--success),var(--success-light));box-shadow:0 4px 20px rgba(39,174,96,0.35)}
+.checkin-btn .checkin-icon{font-size:2rem;margin-bottom:2px}
+
+.today-tasks{display:flex;flex-direction:column;gap:10px}
+.task-item{display:flex;align-items:center;justify-content:space-between;padding:14px 16px;background:var(--card);border-radius:var(--radius-sm);box-shadow:var(--shadow);cursor:pointer;transition:all .2s;-webkit-tap-highlight-color:transparent}
+.task-item:hover{transform:translateX(4px)}
+.task-item:active{transform:scale(.98)}
+.task-left{display:flex;align-items:center;gap:12px}
+.task-left .task-icon{font-size:1.3rem}
+.task-info .task-name{font-weight:600;font-size:.9rem}
+.task-info .task-desc{font-size:.75rem;color:var(--text-secondary)}
+.task-right{display:flex;align-items:center;gap:6px}
+.task-count{font-size:1.1rem;font-weight:700;color:var(--primary)}
+.task-arrow{color:var(--text-muted);font-size:.9rem}
+
+/* ========== Learning Page ========== */
+.learn-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:16px}
+.learn-progress{font-size:.85rem;color:var(--text-secondary)}
+.learn-close{width:36px;height:36px;border-radius:50%;background:var(--border);display:flex;align-items:center;justify-content:center;cursor:pointer;font-size:1.1rem;transition:all .2s}
+.learn-close:hover{background:#ddd}
+
+.word-card-container{perspective:1000px;margin-bottom:20px}
+.word-card{background:var(--card);border-radius:var(--radius);box-shadow:var(--shadow-lg);min-height:340px;padding:28px 24px;position:relative;transition:transform .6s;transform-style:preserve-3d;cursor:pointer}
+.word-card.flipped{transform:rotateY(180deg)}
+.word-card .front,.word-card .back{backface-visibility:hidden}
+.word-card .back{transform:rotateY(180deg);position:absolute;top:0;left:0;width:100%;height:100%;padding:28px 24px;display:flex;flex-direction:column;justify-content:center}
+
+.word-main{text-align:center;margin-bottom:20px}
+.word-text{font-size:2.2rem;font-weight:700;color:var(--text);margin-bottom:6px;letter-spacing:1px}
+.word-phonetic{font-size:1rem;color:var(--text-secondary);font-style:italic;margin-bottom:8px}
+.word-pos{display:inline-block;padding:2px 10px;background:var(--primary-bg);color:var(--primary);border-radius:12px;font-size:.8rem;font-weight:500}
+.word-speak-btn{display:inline-flex;align-items:center;justify-content:center;width:44px;height:44px;border-radius:50%;background:var(--primary-bg);color:var(--primary);font-size:1.3rem;cursor:pointer;transition:all .2s;margin-top:8px;border:none}
+.word-speak-btn:hover{background:var(--primary);color:#fff}
+.word-speak-btn:active{transform:scale(.9)}
+.word-speak-btn.speaking{animation:pulse 1s infinite}
+@keyframes pulse{0%,100%{transform:scale(1)}50%{transform:scale(1.1)}}
+
+.word-detail{margin-top:16px}
+.word-definition{font-size:1.2rem;font-weight:600;color:var(--text);margin-bottom:12px;padding:12px;background:var(--primary-bg);border-radius:var(--radius-sm);border-left:4px solid var(--primary)}
+.word-example{font-size:.9rem;color:var(--text-secondary);line-height:1.7}
+.word-example .en{font-style:italic;color:var(--text);margin-bottom:4px}
+.word-example .zh{font-size:.85rem}
+
+.learn-actions{display:flex;gap:10px;margin-top:20px}
+.learn-actions .btn{flex:1}
+
+.tap-hint{text-align:center;font-size:.8rem;color:var(--text-muted);margin-top:12px;animation:blink 2s infinite}
+@keyframes blink{0%,100%{opacity:1}50%{opacity:.4}}
+
+/* ========== Review Page ========== */
+.review-mode-selector{display:flex;flex-direction:column;gap:12px;margin-bottom:20px}
+.mode-card{display:flex;align-items:center;gap:14px;padding:16px;background:var(--card);border-radius:var(--radius);box-shadow:var(--shadow);cursor:pointer;transition:all .2s;-webkit-tap-highlight-color:transparent;border:2px solid transparent}
+.mode-card:hover{border-color:var(--primary-light);transform:translateY(-2px)}
+.mode-card:active{transform:scale(.98)}
+.mode-card .mode-icon{font-size:2rem;width:48px;text-align:center}
+.mode-card .mode-info .mode-name{font-weight:600;font-size:.95rem}
+.mode-card .mode-info .mode-desc{font-size:.78rem;color:var(--text-secondary)}
+.mode-card .mode-count{margin-left:auto;font-size:.85rem;color:var(--primary);font-weight:600;white-space:nowrap}
+
+.review-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;padding:0 4px}
+.review-count{font-size:.85rem;color:var(--text-secondary)}
+
+.review-card{background:var(--card);border-radius:var(--radius);box-shadow:var(--shadow-lg);padding:24px;margin-bottom:16px}
+.review-question{font-size:1.3rem;font-weight:700;text-align:center;margin-bottom:24px;min-height:50px;display:flex;align-items:center;justify-content:center}
+.review-question .phonetic-hint{font-size:.9rem;color:var(--text-secondary);font-weight:400;display:block;margin-top:4px}
+
+.choices{display:flex;flex-direction:column;gap:10px}
+.choice-btn{padding:14px 16px;background:var(--bg);border:2px solid var(--border);border-radius:var(--radius-sm);text-align:left;font-size:.9rem;cursor:pointer;transition:all .2s;-webkit-tap-highlight-color:transparent}
+.choice-btn:hover{border-color:var(--primary-light);background:var(--primary-bg)}
+.choice-btn:active{transform:scale(.98)}
+.choice-btn.correct{border-color:var(--success);background:#e8f8f0;color:var(--success)}
+.choice-btn.wrong{border-color:var(--danger);background:#fde8e8;color:var(--danger)}
+.choice-btn .choice-label{display:inline-block;width:24px;height:24px;border-radius:50%;background:var(--border);text-align:center;line-height:24px;font-size:.75rem;font-weight:600;margin-right:10px}
+.choice-btn.correct .choice-label{background:var(--success);color:#fff}
+.choice-btn.wrong .choice-label{background:var(--danger);color:#fff}
+
+.spelling-input{display:flex;gap:6px;justify-content:center;flex-wrap:wrap;margin-bottom:16px}
+.spelling-input input{width:100%;padding:14px 16px;font-size:1.2rem;border:2px solid var(--border);border-radius:var(--radius-sm);text-align:center;letter-spacing:2px;outline:none;transition:border-color .2s}
+.spelling-input input:focus{border-color:var(--primary)}
+.spelling-input input.correct{border-color:var(--success);background:#e8f8f0}
+.spelling-input input.wrong{border-color:var(--danger);background:#fde8e8}
+
+.review-feedback{text-align:center;padding:16px;border-radius:var(--radius-sm);margin-top:12px;animation:fadeIn .3s}
+.review-feedback.correct{background:#e8f8f0;color:var(--success)}
+.review-feedback.wrong{background:#fde8e8;color:var(--danger)}
+.review-feedback .feedback-word{font-size:1.1rem;font-weight:700;margin-bottom:4px}
+.review-feedback .feedback-def{font-size:.85rem;opacity:.8}
+
+.listen-btn-large{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:8px;padding:32px;background:var(--primary-bg);border-radius:var(--radius);cursor:pointer;transition:all .2s;margin-bottom:20px;border:none;width:100%}
+.listen-btn-large:hover{background:var(--primary);color:#fff}
+.listen-btn-large .listen-icon{font-size:3rem}
+.listen-btn-large .listen-text{font-size:.9rem;font-weight:500}
+
+/* ========== Word Books Page ========== */
+.book-card{display:flex;align-items:center;gap:16px;padding:18px;background:var(--card);border-radius:var(--radius);box-shadow:var(--shadow);margin-bottom:12px;cursor:pointer;transition:all .2s;border:2px solid transparent;-webkit-tap-highlight-color:transparent}
+.book-card:hover{border-color:var(--primary-light);transform:translateY(-1px)}
+.book-card.active{border-color:var(--primary);background:var(--primary-bg)}
+.book-card .book-icon{font-size:2.2rem;width:52px;text-align:center}
+.book-card .book-info{flex:1}
+.book-card .book-name{font-weight:700;font-size:1rem;margin-bottom:2px}
+.book-card .book-desc{font-size:.78rem;color:var(--text-secondary);margin-bottom:6px}
+.book-card .book-progress{font-size:.75rem;color:var(--text-secondary)}
+.book-card .book-status{font-size:.75rem;padding:3px 10px;border-radius:12px;font-weight:600;white-space:nowrap}
+.book-card .book-status.using{background:var(--primary);color:#fff}
+.book-card .book-status.completed{background:var(--success);color:#fff}
+
+/* ========== Statistics Page ========== */
+.stats-overview{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:16px}
+.stats-overview .stat-item{text-align:center;padding:14px 8px;background:var(--card);border-radius:var(--radius-sm);box-shadow:var(--shadow)}
+.stats-overview .stat-item .stat-val{font-size:1.3rem;font-weight:700;color:var(--primary)}
+.stats-overview .stat-item .stat-lbl{font-size:.7rem;color:var(--text-secondary);margin-top:2px}
+
+.mastery-distribution{display:flex;height:24px;border-radius:12px;overflow:hidden;margin:8px 0}
+.mastery-distribution .seg{transition:width .5s ease;min-width:2px}
+.mastery-distribution .seg.new{background:var(--text-muted)}
+.mastery-distribution .seg.learning{background:var(--warning)}
+.mastery-distribution .seg.familiar{background:var(--info)}
+.mastery-distribution .seg.mastered{background:var(--success)}
+.mastery-legend{display:flex;flex-wrap:wrap;gap:12px;margin-top:8px;font-size:.78rem}
+.mastery-legend .legend-item{display:flex;align-items:center;gap:4px}
+.mastery-legend .legend-dot{width:10px;height:10px;border-radius:50%}
+.mastery-legend .legend-dot.new{background:var(--text-muted)}
+.mastery-legend .legend-dot.learning{background:var(--warning)}
+.mastery-legend .legend-dot.familiar{background:var(--info)}
+.mastery-legend .legend-dot.mastered{background:var(--success)}
+
+.calendar-section{margin-top:16px}
+.calendar-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:12px}
+.calendar-header .month-title{font-weight:600;font-size:.95rem}
+.calendar-header button{width:32px;height:32px;border-radius:50%;background:var(--bg);border:none;cursor:pointer;font-size:1rem;display:flex;align-items:center;justify-content:center;transition:all .2s}
+.calendar-header button:hover{background:var(--primary-bg);color:var(--primary)}
+.calendar-grid{display:grid;grid-template-columns:repeat(7,1fr);gap:4px;text-align:center}
+.calendar-grid .day-label{font-size:.7rem;color:var(--text-muted);padding:4px 0;font-weight:500}
+.calendar-grid .day-cell{aspect-ratio:1;display:flex;align-items:center;justify-content:center;font-size:.78rem;border-radius:50%;cursor:default;transition:all .2s}
+.calendar-grid .day-cell.empty{cursor:default}
+.calendar-grid .day-cell.checked{background:var(--success);color:#fff;font-weight:600}
+.calendar-grid .day-cell.today{border:2px solid var(--primary);font-weight:600}
+
+.daily-chart{display:flex;align-items:flex-end;gap:4px;height:80px;margin-top:8px;padding:0 4px}
+.daily-chart .chart-bar{flex:1;background:var(--primary);border-radius:4px 4px 0 0;min-width:8px;transition:height .5s ease;position:relative}
+.daily-chart .chart-bar:hover{background:var(--primary-light)}
+.daily-chart .chart-labels{display:flex;gap:4px;padding:0 4px;margin-top:4px}
+.daily-chart .chart-labels span{flex:1;text-align:center;font-size:.6rem;color:var(--text-muted)}
+
+/* ========== Settings Modal ========== */
+.modal-overlay{position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,.5);z-index:200;display:none;align-items:center;justify-content:center;padding:20px}
+.modal-overlay.show{display:flex}
+.modal{background:var(--card);border-radius:var(--radius);padding:24px;max-width:400px;width:100%;max-height:80vh;overflow-y:auto;animation:modalIn .3s ease}
+@keyframes modalIn{from{opacity:0;transform:scale(.9)}to{opacity:1;transform:scale(1)}}
+.modal h2{font-size:1.1rem;margin-bottom:16px;display:flex;align-items:center;gap:8px}
+.modal .setting-item{display:flex;align-items:center;justify-content:space-between;padding:12px 0;border-bottom:1px solid var(--border)}
+.modal .setting-item:last-child{border-bottom:none}
+.modal .setting-label{font-size:.9rem;font-weight:500}
+.modal .setting-label small{display:block;font-size:.75rem;color:var(--text-secondary);font-weight:400;margin-top:2px}
+.modal .setting-control input[type="number"]{width:60px;padding:6px 8px;border:1px solid var(--border);border-radius:var(--radius-sm);text-align:center;font-size:.9rem}
+.modal .close-btn{width:100%;margin-top:16px}
+
+/* ========== Toast ========== */
+.toast{position:fixed;top:20px;left:50%;transform:translateX(-50%);background:var(--text);color:#fff;padding:10px 20px;border-radius:var(--radius-sm);font-size:.85rem;z-index:300;animation:toastIn .3s ease;max-width:90%;text-align:center}
+@keyframes toastIn{from{opacity:0;transform:translate(-50%,-20px)}to{opacity:1;transform:translate(-50%,0)}}
+
+/* ========== Empty State ========== */
+.empty-state{text-align:center;padding:40px 20px;color:var(--text-secondary)}
+.empty-state .empty-icon{font-size:3rem;margin-bottom:12px}
+.empty-state .empty-text{font-size:.95rem;margin-bottom:16px}
+
+/* ========== Completion ========== */
+.completion-screen{text-align:center;padding:40px 20px}
+.completion-screen .completion-icon{font-size:4rem;margin-bottom:16px}
+.completion-screen h2{font-size:1.4rem;color:var(--primary);margin-bottom:8px}
+.completion-screen .completion-stats{display:flex;justify-content:center;gap:24px;margin:20px 0}
+.completion-screen .completion-stat{text-align:center}
+.completion-screen .completion-stat .val{font-size:1.5rem;font-weight:700;color:var(--primary)}
+.completion-screen .completion-stat .lbl{font-size:.75rem;color:var(--text-secondary)}
+
+/* ========== Responsive ========== */
+@media(min-width:481px){
+  .app-container{box-shadow:var(--shadow-lg)}
+}
+@media(max-width:360px){
+  .word-text{font-size:1.8rem}
+  .dashboard-stats{grid-template-columns:1fr 1fr}
+  .stats-overview{grid-template-columns:repeat(3,1fr)}
+}
+
+/* ========== Scrollbar ========== */
+::-webkit-scrollbar{width:4px}
+::-webkit-scrollbar-track{background:transparent}
+::-webkit-scrollbar-thumb{background:var(--border);border-radius:2px}
+
+/* ========== Loading ========== */
+.loading-spinner{width:32px;height:32px;border:3px solid var(--border);border-top-color:var(--primary);border-radius:50%;animation:spin .8s linear infinite;margin:20px auto}
+@keyframes spin{to{transform:rotate(360deg)}}
+
+/* ========== Review result card ========== */
+.result-card{background:var(--card);border-radius:var(--radius);padding:16px;margin-bottom:10px;display:flex;align-items:center;gap:12px;box-shadow:var(--shadow)}
+.result-card .result-word{font-weight:700;font-size:1rem;flex:1}
+.result-card .result-status{padding:3px 10px;border-radius:12px;font-size:.75rem;font-weight:600}
+.result-card .result-status.mastered{background:#e8f8f0;color:var(--success)}
+.result-card .result-status.learning{background:#fef3e2;color:var(--warning)}
+.result-card .result-status.new{background:#f0f0f0;color:var(--text-secondary)}
+</style>
+</head>
+<body>
+
+<!-- ========== App Container ========== -->
+<div class="app-container" id="app">
+
+  <!-- ===== Dashboard Page ===== -->
+  <div class="page active" id="page-dashboard">
+    <div class="top-bar">
+      <div>
+        <h1>📖 VocabMaster</h1>
+        <div class="subtitle" id="greeting-text">今天也要加油哦</div>
+      </div>
+      <div class="streak-badge" id="streak-badge">
+        <span class="fire">🔥</span>
+        <span id="streak-count">0</span>天
+      </div>
+    </div>
+
+    <div class="checkin-section">
+      <button class="checkin-btn" id="checkin-btn" onclick="handleCheckin()">
+        <span class="checkin-icon">✅</span>
+        <span id="checkin-text">打卡</span>
+      </button>
+      <div style="margin-top:10px;font-size:.8rem;color:var(--text-secondary)" id="checkin-status">今日尚未打卡</div>
+    </div>
+
+    <div class="dashboard-stats">
+      <div class="stat-card">
+        <div class="stat-icon">📝</div>
+        <div class="stat-value" id="stat-new">0</div>
+        <div class="stat-label">今日新学</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-icon">🔄</div>
+        <div class="stat-value" id="stat-review">0</div>
+        <div class="stat-label">今日复习</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-icon">📚</div>
+        <div class="stat-value" id="stat-total">0</div>
+        <div class="stat-label">已学单词</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-icon">🎯</div>
+        <div class="stat-value" id="stat-mastered">0</div>
+        <div class="stat-label">已掌握</div>
+      </div>
+    </div>
+
+    <div class="today-tasks">
+      <div class="task-item" onclick="startLearning()">
+        <div class="task-left">
+          <span class="task-icon">📖</span>
+          <div class="task-info">
+            <div class="task-name">学习新词</div>
+            <div class="task-desc" id="task-new-desc">继续加油</div>
+          </div>
+        </div>
+        <div class="task-right">
+          <span class="task-count" id="task-new-count">0</span>
+          <span class="task-arrow">›</span>
+        </div>
+      </div>
+      <div class="task-item" onclick="navigateTo('review')">
+        <div class="task-left">
+          <span class="task-icon">🔄</span>
+          <div class="task-info">
+            <div class="task-name">复习旧词</div>
+            <div class="task-desc" id="task-review-desc">暂无待复习</div>
+          </div>
+        </div>
+        <div class="task-right">
+          <span class="task-count" id="task-review-count">0</span>
+          <span class="task-arrow">›</span>
+        </div>
+      </div>
+    </div>
+
+    <div style="margin-top:12px;text-align:center">
+      <button class="btn btn-ghost btn-sm" onclick="showSettings()">⚙️ 学习设置</button>
+    </div>
+  </div>
+
+  <!-- ===== Learning Page ===== -->
+  <div class="page" id="page-learn">
+    <div class="learn-header">
+      <div class="learn-progress" id="learn-progress">1 / 10</div>
+      <div class="learn-close" onclick="exitLearning()">✕</div>
+    </div>
+    <div class="progress-bar" style="margin-bottom:16px">
+      <div class="fill" id="learn-progress-bar" style="width:10%"></div>
+    </div>
+
+    <div class="word-card-container" id="learn-card-container">
+      <!-- Word card will be rendered here -->
+    </div>
+
+    <div id="learn-actions-container">
+      <!-- Action buttons will be rendered here -->
+    </div>
+  </div>
+
+  <!-- ===== Review Page ===== -->
+  <div class="page" id="page-review">
+    <div class="top-bar">
+      <div><h1>🔄 复习</h1></div>
+      <button class="btn btn-ghost btn-sm" id="review-back-btn" onclick="exitReview()" style="display:none">返回</button>
+    </div>
+
+    <div id="review-mode-select">
+      <p style="font-size:.85rem;color:var(--text-secondary);margin-bottom:12px">选择复习模式</p>
+      <div class="review-mode-selector" id="review-modes">
+        <!-- Mode cards rendered here -->
+      </div>
+    </div>
+
+    <div id="review-session" style="display:none">
+      <div class="review-header">
+        <span class="review-count" id="review-count">1 / 10</span>
+        <div class="progress-bar" style="width:120px">
+          <div class="fill" id="review-progress-bar" style="width:10%"></div>
+        </div>
+      </div>
+      <div id="review-card-area">
+        <!-- Review card rendered here -->
+      </div>
+    </div>
+
+    <div id="review-complete" style="display:none">
+      <!-- Completion screen rendered here -->
+    </div>
+  </div>
+
+  <!-- ===== Word Books Page ===== -->
+  <div class="page" id="page-books">
+    <div class="top-bar">
+      <div><h1>📚 词书</h1></div>
+    </div>
+    <div id="books-list">
+      <!-- Book cards rendered here -->
+    </div>
+  </div>
+
+  <!-- ===== Statistics Page ===== -->
+  <div class="page" id="page-stats">
+    <div class="top-bar">
+      <div><h1>📊 统计</h1></div>
+    </div>
+
+    <div class="stats-overview" id="stats-overview">
+      <!-- Stats overview rendered here -->
+    </div>
+
+    <div class="card">
+      <div class="card-title">🎯 掌握程度分布</div>
+      <div class="mastery-distribution" id="mastery-bar"></div>
+      <div class="mastery-legend" id="mastery-legend"></div>
+    </div>
+
+    <div class="card">
+      <div class="card-title">📅 学习日历</div>
+      <div class="calendar-section">
+        <div class="calendar-header">
+          <button onclick="changeMonth(-1)">◀</button>
+          <span class="month-title" id="calendar-month"></span>
+          <button onclick="changeMonth(1)">▶</button>
+        </div>
+        <div class="calendar-grid" id="calendar-grid"></div>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-title">📈 近7日学习量</div>
+      <div class="daily-chart" id="daily-chart"></div>
+      <div class="chart-labels" id="daily-chart-labels"></div>
+    </div>
+  </div>
+
+</div>
+
+<!-- ========== Bottom Navigation ========== -->
+<div class="bottom-nav" id="bottom-nav">
+  <div class="nav-item active" onclick="navigateTo('dashboard')" data-page="dashboard">
+    <span class="nav-icon">🏠</span>
+    <span class="nav-label">首页</span>
+  </div>
+  <div class="nav-item" onclick="navigateTo('learn')" data-page="learn">
+    <span class="nav-icon">📖</span>
+    <span class="nav-label">学习</span>
+  </div>
+  <div class="nav-item" onclick="navigateTo('review')" data-page="review">
+    <span class="nav-icon">🔄</span>
+    <span class="nav-label">复习</span>
+  </div>
+  <div class="nav-item" onclick="navigateTo('books')" data-page="books">
+    <span class="nav-icon">📚</span>
+    <span class="nav-label">词书</span>
+  </div>
+  <div class="nav-item" onclick="navigateTo('stats')" data-page="stats">
+    <span class="nav-icon">📊</span>
+    <span class="nav-label">统计</span>
+  </div>
+</div>
+
+<!-- ========== Settings Modal ========== -->
+<div class="modal-overlay" id="settings-modal">
+  <div class="modal">
+    <h2>⚙️ 学习设置</h2>
+    <div class="setting-item">
+      <div class="setting-label">每日新学单词数<small>每天学习的新单词数量</small></div>
+      <div class="setting-control"><input type="number" id="setting-daily-new" min="5" max="50" value="10"></div>
+    </div>
+    <div class="setting-item">
+      <div class="setting-label">每日复习上限<small>每天复习单词的最大数量</small></div>
+      <div class="setting-control"><input type="number" id="setting-daily-review" min="10" max="100" value="30"></div>
+    </div>
+    <div class="setting-item">
+      <div class="setting-label">🗑️ 重置学习数据<small>清除所有学习进度</small></div>
+      <div class="setting-control"><button class="btn btn-danger btn-sm" onclick="resetAllData()">重置</button></div>
+    </div>
+    <button class="btn btn-primary btn-block close-btn" onclick="saveSettings()">保存</button>
+  </div>
+</div>
+
+<script>
+// ========================================================================
+// ===== 词库数据 =====
+// ========================================================================
+const WORD_BOOKS = {
+  'cet4': {
+    id: 'cet4',
+    name: 'CET-4 核心词汇',
+    desc: '大学英语四级核心词汇，打好基础',
+    icon: '📘',
+    words: [
+      {word:'abandon',phonetic:'/əˈbændən/',pos:'v.',def:'放弃；抛弃',ex:'He abandoned his plan to travel abroad.',exCn:'他放弃了出国旅行的计划。'},
+      {word:'abstract',phonetic:'/ˈæbstrækt/',pos:'adj.',def:'抽象的 n. 摘要',ex:'The concept is too abstract for children.',exCn:'这个概念对孩子们来说太抽象了。'},
+      {word:'academic',phonetic:'/ˌækəˈdemɪk/',pos:'adj.',def:'学术的；学院的',ex:'She has an outstanding academic record.',exCn:'她有着出色的学术成绩。'},
+      {word:'accomplish',phonetic:'/əˈkɒmplɪʃ/',pos:'v.',def:'完成；实现',ex:'We accomplished the task ahead of schedule.',exCn:'我们提前完成了任务。'},
+      {word:'acknowledge',phonetic:'/əkˈnɒlɪdʒ/',pos:'v.',def:'承认；确认',ex:'He acknowledged his mistake publicly.',exCn:'他公开承认了自己的错误。'},
+      {word:'acquire',phonetic:'/əˈkwaɪər/',pos:'v.',def:'获得；习得',ex:'She acquired a taste for classical music.',exCn:'她培养了对古典音乐的品味。'},
+      {word:'adequate',phonetic:'/ˈædɪkwət/',pos:'adj.',def:'充足的；适当的',ex:'The food supply is adequate for the winter.',exCn:'食物供应足够过冬。'},
+      {word:'adjust',phonetic:'/əˈdʒʌst/',pos:'v.',def:'调整；适应',ex:'You need to adjust to the new environment.',exCn:'你需要适应新环境。'},
+      {word:'advocate',phonetic:'/ˈædvəkeɪt/',pos:'v.',def:'提倡；主张 n. 提倡者',ex:'She advocates for equal rights.',exCn:'她倡导平等权利。'},
+      {word:'afford',phonetic:'/əˈfɔːrd/',pos:'v.',def:'买得起；提供',ex:'I cannot afford a new car.',exCn:'我买不起新车。'},
+      {word:'aggressive',phonetic:'/əˈɡresɪv/',pos:'adj.',def:'侵略的；好斗的',ex:'He took an aggressive approach to sales.',exCn:'他采取了积极的销售策略。'},
+      {word:'allocate',phonetic:'/ˈæləkeɪt/',pos:'v.',def:'分配；拨出',ex:'The government allocated funds for education.',exCn:'政府拨出了教育经费。'},
+      {word:'alter',phonetic:'/ˈɔːltər/',pos:'v.',def:'改变；修改',ex:'We need to alter our plans.',exCn:'我们需要修改计划。'},
+      {word:'alternative',phonetic:'/ɔːlˈtɜːrnətɪv/',pos:'n.',def:'替代选择 adj. 替代的',ex:'Is there an alternative solution?',exCn:'有没有替代方案？'},
+      {word:'ambiguous',phonetic:'/æmˈbɪɡjuəs/',pos:'adj.',def:'模糊的；含混的',ex:'His reply was deliberately ambiguous.',exCn:'他的回答故意含糊其辞。'},
+      {word:'ambitious',phonetic:'/æmˈbɪʃəs/',pos:'adj.',def:'有抱负的；雄心勃勃的',ex:'She is ambitious and hardworking.',exCn:'她既有雄心又勤奋。'},
+      {word:'analyze',phonetic:'/ˈænəlaɪz/',pos:'v.',def:'分析；解析',ex:'We need to analyze the data carefully.',exCn:'我们需要仔细分析数据。'},
+      {word:'annual',phonetic:'/ˈænjuəl/',pos:'adj.',def:'每年的；年度的',ex:'The annual report is now available.',exCn:'年度报告现已发布。'},
+      {word:'anticipate',phonetic:'/ænˈtɪsɪpeɪt/',pos:'v.',def:'预期；期望',ex:'We anticipate a busy holiday season.',exCn:'我们预期假期会很忙。'},
+      {word:'apparent',phonetic:'/əˈpærənt/',pos:'adj.',def:'明显的；表面上的',ex:'It was apparent that she was tired.',exCn:'很明显她累了。'},
+      {word:'appreciate',phonetic:'/əˈpriːʃieɪt/',pos:'v.',def:'欣赏；感激',ex:'I really appreciate your help.',exCn:'我非常感谢你的帮助。'},
+      {word:'approach',phonetic:'/əˈprəʊtʃ/',pos:'v.',def:'接近 n. 方法',ex:'We need a new approach to this problem.',exCn:'我们需要用新方法解决这个问题。'},
+      {word:'appropriate',phonetic:'/əˈprəʊpriət/',pos:'adj.',def:'适当的；恰当的',ex:'This dress is not appropriate for the occasion.',exCn:'这条裙子不适合这个场合。'},
+      {word:'approve',phonetic:'/əˈpruːv/',pos:'v.',def:'批准；赞成',ex:'The committee approved the proposal.',exCn:'委员会批准了这项提案。'},
+      {word:'arise',phonetic:'/əˈraɪz/',pos:'v.',def:'出现；产生',ex:'New problems may arise during the project.',exCn:'项目过程中可能出现新问题。'},
+      {word:'artificial',phonetic:'/ˌɑːrtɪˈfɪʃl/',pos:'adj.',def:'人工的；虚假的',ex:'Artificial intelligence is changing our lives.',exCn:'人工智能正在改变我们的生活。'},
+      {word:'assess',phonetic:'/əˈses/',pos:'v.',def:'评估；评定',ex:'We need to assess the risk before investing.',exCn:'投资前我们需要评估风险。'},
+      {word:'assign',phonetic:'/əˈsaɪn/',pos:'v.',def:'分配；指派',ex:'The teacher assigned homework to students.',exCn:'老师给学生布置了作业。'},
+      {word:'associate',phonetic:'/əˈsəʊʃieɪt/',pos:'v.',def:'联系；联想',ex:'People often associate wealth with happiness.',exCn:'人们常把财富和幸福联系在一起。'},
+      {word:'assume',phonetic:'/əˈsjuːm/',pos:'v.',def:'假设；承担',ex:'I assume you have read the report.',exCn:'我假设你已经读过报告了。'},
+      {word:'assure',phonetic:'/əˈʃʊər/',pos:'v.',def:'保证；使确信',ex:'I assure you that everything is fine.',exCn:'我向你保证一切都没问题。'},
+      {word:'attach',phonetic:'/əˈtætʃ/',pos:'v.',def:'附加；连接',ex:'Please attach your resume to the email.',exCn:'请将简历附在邮件中。'},
+      {word:'attempt',phonetic:'/əˈtempt/',pos:'v.',def:'尝试；企图',ex:'He attempted to climb the mountain alone.',exCn:'他尝试独自攀登那座山。'},
+      {word:'attribute',phonetic:'/əˈtrɪbjuːt/',pos:'v.',def:'归因于 n. 属性',ex:'She attributes her success to hard work.',exCn:'她把成功归因于努力工作。'},
+      {word:'available',phonetic:'/əˈveɪləbl/',pos:'adj.',def:'可用的；有空的',ex:'The room is available next week.',exCn:'这间房下周可用。'}
+    ]
+  },
+  'cet6': {
+    id: 'cet6',
+    name: 'CET-6 核心词汇',
+    desc: '大学英语六级核心词汇，进阶提升',
+    icon: '📗',
+    words: [
+      {word:'abide',phonetic:'/əˈbaɪd/',pos:'v.',def:'遵守；忍受',ex:'You must abide by the rules.',exCn:'你必须遵守规则。'},
+      {word:'abolish',phonetic:'/əˈbɒlɪʃ/',pos:'v.',def:'废除；废止',ex:'The government abolished the old tax law.',exCn:'政府废除了旧税法。'},
+      {word:'abrupt',phonetic:'/əˈbrʌpt/',pos:'adj.',def:'突然的；唐突的',ex:'The road makes an abrupt turn.',exCn:'道路突然转弯。'},
+      {word:'absurd',phonetic:'/əbˈsɜːrd/',pos:'adj.',def:'荒谬的；可笑的',ex:'It would be absurd to blame them.',exCn:'责怪他们是荒谬的。'},
+      {word:'abundance',phonetic:'/əˈbʌndəns/',pos:'n.',def:'丰富；充裕',ex:'There is an abundance of natural resources.',exCn:'这里有丰富的自然资源。'},
+      {word:'accumulate',phonetic:'/əˈkjuːmjəleɪt/',pos:'v.',def:'积累；堆积',ex:'He accumulated a fortune over the years.',exCn:'多年来他积累了一笔财富。'},
+      {word:'acquaint',phonetic:'/əˈkweɪnt/',pos:'v.',def:'使熟悉；介绍',ex:'Let me acquaint you with the new system.',exCn:'让我给你介绍新系统。'},
+      {word:'adhere',phonetic:'/ədˈhɪər/',pos:'v.',def:'坚持；粘附',ex:'We must adhere to the original plan.',exCn:'我们必须坚持原计划。'},
+      {word:'adjacent',phonetic:'/əˈdʒeɪsnt/',pos:'adj.',def:'邻近的；毗连的',ex:'The hotel is adjacent to the railway station.',exCn:'酒店紧邻火车站。'},
+      {word:'administer',phonetic:'/ədˈmɪnɪstər/',pos:'v.',def:'管理；执行',ex:'She administers the project efficiently.',exCn:'她高效地管理着这个项目。'},
+      {word:'adolescent',phonetic:'/ˌædəˈlesnt/',pos:'n.',def:'青少年 adj. 青春期的',ex:'Adolescents often face identity issues.',exCn:'青少年常面临身份认同问题。'},
+      {word:'advent',phonetic:'/ˈædvent/',pos:'n.',def:'出现；到来',ex:'The advent of the internet changed everything.',exCn:'互联网的出现改变了一切。'},
+      {word:'adverse',phonetic:'/ˈædvɜːrs/',pos:'adj.',def:'不利的；相反的',ex:'Adverse weather conditions delayed the flight.',exCn:'恶劣天气延误了航班。'},
+      {word:'affluent',phonetic:'/ˈæfluənt/',pos:'adj.',def:'富裕的；丰富的',ex:'They live in an affluent neighborhood.',exCn:'他们住在富裕的社区。'},
+      {word:'aggravate',phonetic:'/ˈæɡrəveɪt/',pos:'v.',def:'加重；恶化',ex:'Stress can aggravate the condition.',exCn:'压力可能加重病情。'},
+      {word:'aggregate',phonetic:'/ˈæɡrɪɡeɪt/',pos:'v.',def:'聚集 adj. 总计的',ex:'The aggregate cost exceeded the budget.',exCn:'总费用超过了预算。'},
+      {word:'alienate',phonetic:'/ˈeɪliəneɪt/',pos:'v.',def:'疏远；使疏离',ex:'His behavior alienated his friends.',exCn:'他的行为疏远了朋友。'},
+      {word:'alleviate',phonetic:'/əˈliːvieɪt/',pos:'v.',def:'减轻；缓和',ex:'Medicine can alleviate the pain.',exCn:'药物可以减轻疼痛。'},
+      {word:'allure',phonetic:'/əˈlʊər/',pos:'v.',def:'引诱 n. 诱惑力',ex:'The allure of the city attracted many young people.',exCn:'城市的魅力吸引了许多年轻人。'},
+      {word:'ameliorate',phonetic:'/əˈmiːliəreɪt/',pos:'v.',def:'改善；改进',ex:'Steps were taken to ameliorate the situation.',exCn:'采取了措施来改善局势。'},
+      {word:'amplify',phonetic:'/ˈæmplɪfaɪ/',pos:'v.',def:'放大；增强',ex:'The microphone amplified his voice.',exCn:'麦克风放大了他的声音。'},
+      {word:'analogy',phonetic:'/əˈnælədʒi/',pos:'n.',def:'类比；类推',ex:'He drew an analogy between life and a journey.',exCn:'他把人生比作一段旅程。'},
+      {word:'anonymous',phonetic:'/əˈnɒnɪməs/',pos:'adj.',def:'匿名的；无名的',ex:'The donor wished to remain anonymous.',exCn:'捐赠者希望匿名。'},
+      {word:'apparatus',phonetic:'/ˌæpəˈreɪtəs/',pos:'n.',def:'器械；装置',ex:'The lab is equipped with modern apparatus.',exCn:'实验室配备了现代化设备。'},
+      {word:'appeal',phonetic:'/əˈpiːl/',pos:'v.',def:'呼吁 n. 上诉',ex:'The charity appealed for donations.',exCn:'慈善机构呼吁捐款。'},
+      {word:'appraise',phonetic:'/əˈpreɪz/',pos:'v.',def:'评价；鉴定',ex:'The manager will appraise your performance.',exCn:'经理将评估你的表现。'},
+      {word:'articulate',phonetic:'/ɑːˈtɪkjuleɪt/',pos:'adj.',def:'善于表达的 v. 清楚表述',ex:'She is very articulate in expressing her ideas.',exCn:'她很善于表达自己的想法。'},
+      {word:'ascertain',phonetic:'/ˌæsəˈteɪn/',pos:'v.',def:'确定；查明',ex:'We need to ascertain the facts first.',exCn:'我们需要先查明事实。'},
+      {word:'asset',phonetic:'/ˈæset/',pos:'n.',def:'资产；优点',ex:'Good health is a great asset.',exCn:'健康是一笔巨大的财富。'},
+      {word:'assimilate',phonetic:'/əˈsɪməleɪt/',pos:'v.',def:'同化；吸收',ex:'It takes time to assimilate new information.',exCn:'吸收新信息需要时间。'},
+      {word:'authentic',phonetic:'/ɔːˈθentɪk/',pos:'adj.',def:'真实的；正宗的',ex:'This is an authentic Italian restaurant.',exCn:'这是一家正宗的意大利餐厅。'},
+      {word:'autonomous',phonetic:'/ɔːˈtɒnəməs/',pos:'adj.',def:'自治的；自主的',ex:'The region is fully autonomous.',exCn:'该地区完全自治。'},
+      {word:'bias',phonetic:'/ˈbaɪəs/',pos:'n.',def:'偏见；偏心',ex:'The report showed a clear bias.',exCn:'报告显示出明显的偏见。'},
+      {word:'bolster',phonetic:'/ˈbəʊlstər/',pos:'v.',def:'支持；增强',ex:'The evidence bolsters the theory.',exCn:'这一证据支持了该理论。'},
+      {word:'bureaucracy',phonetic:'/bjʊˈrɒkrəsi/',pos:'n.',def:'官僚体制；官僚主义',ex:'Excessive bureaucracy slows down progress.',exCn:'过度的官僚主义阻碍了进步。'}
+    ]
+  },
+  'ielts': {
+    id: 'ielts',
+    name: '雅思核心词汇',
+    desc: 'IELTS考试高频核心词汇',
+    icon: '📙',
+    words: [
+      {word:'accommodate',phonetic:'/əˈkɒmədeɪt/',pos:'v.',def:'容纳；提供住宿',ex:'The hotel can accommodate 200 guests.',exCn:'这家酒店可容纳200位客人。'},
+      {word:'accumulate',phonetic:'/əˈkjuːmjəleɪt/',pos:'v.',def:'积累；积聚',ex:'Dust tends to accumulate on surfaces.',exCn:'灰尘容易积聚在表面上。'},
+      {word:'adapt',phonetic:'/əˈdæpt/',pos:'v.',def:'适应；改编',ex:'Animals adapt to their environment.',exCn:'动物适应它们的环境。'},
+      {word:'advocate',phonetic:'/ˈædvəkeɪt/',pos:'v.',def:'主张 n. 拥护者',ex:'Many experts advocate renewable energy.',exCn:'许多专家主张使用可再生能源。'},
+      {word:'affluent',phonetic:'/ˈæfluənt/',pos:'adj.',def:'富裕的；丰富的',ex:'Affluent societies face different challenges.',exCn:'富裕社会面临不同的挑战。'},
+      {word:'alternative',phonetic:'/ɔːlˈtɜːrnətɪv/',pos:'n.',def:'替代方案 adj. 替代的',ex:'Solar energy is a viable alternative.',exCn:'太阳能是一种可行的替代方案。'},
+      {word:'anticipate',phonetic:'/ænˈtɪsɪpeɪt/',pos:'v.',def:'预期；预料',ex:'We anticipate significant changes next year.',exCn:'我们预计明年会有重大变化。'},
+      {word:'attribute',phonetic:'/əˈtrɪbjuːt/',pos:'v.',def:'归因于 n. 属性',ex:'He attributes his recovery to exercise.',exCn:'他把康复归功于锻炼。'},
+      {word:'beneficial',phonetic:'/ˌbenɪˈfɪʃl/',pos:'adj.',def:'有益的；有利的',ex:'Regular exercise is beneficial to health.',exCn:'规律的运动对健康有益。'},
+      {word:'budget',phonetic:'/ˈbʌdʒɪt/',pos:'n.',def:'预算 v. 编预算',ex:'We need to stick to our budget.',exCn:'我们需要坚持预算。'},
+      {word:'capacity',phonetic:'/kəˈpæsəti/',pos:'n.',def:'容量；能力',ex:'The stadium has a capacity of 50,000.',exCn:'体育场可容纳五万人。'},
+      {word:'certificate',phonetic:'/sərˈtɪfɪkət/',pos:'n.',def:'证书；执照',ex:'You need a medical certificate for this.',exCn:'你需要一张医疗证明。'},
+      {word:'challenge',phonetic:'/ˈtʃælɪndʒ/',pos:'n.',def:'挑战 v. 质疑',ex:'Climate change is a global challenge.',exCn:'气候变化是全球性挑战。'},
+      {word:'circumstance',phonetic:'/ˈsɜːrkəmstæns/',pos:'n.',def:'情况；环境',ex:'Under no circumstance should you give up.',exCn:'在任何情况下都不应放弃。'},
+      {word:'collaborate',phonetic:'/kəˈlæbəreɪt/',pos:'v.',def:'合作；协作',ex:'The two companies decided to collaborate.',exCn:'两家公司决定合作。'},
+      {word:'commence',phonetic:'/kəˈmens/',pos:'v.',def:'开始；着手',ex:'The ceremony will commence at noon.',exCn:'典礼将于中午开始。'},
+      {word:'compensate',phonetic:'/ˈkɒmpenseɪt/',pos:'v.',def:'补偿；赔偿',ex:'The company will compensate for the loss.',exCn:'公司将赔偿损失。'},
+      {word:'conceive',phonetic:'/kənˈsiːv/',pos:'v.',def:'构想；想象',ex:'I cannot conceive of a better solution.',exCn:'我无法想象更好的解决方案。'},
+      {word:'confirm',phonetic:'/kənˈfɜːrm/',pos:'v.',def:'证实；确认',ex:'Please confirm your reservation by email.',exCn:'请通过电子邮件确认预订。'},
+      {word:'consequence',phonetic:'/ˈkɒnsɪkwəns/',pos:'n.',def:'后果；结果',ex:'Every action has consequences.',exCn:'每个行为都有后果。'},
+      {word:'contemporary',phonetic:'/kənˈtemprəri/',pos:'adj.',def:'当代的 n. 同代人',ex:'Contemporary art is often controversial.',exCn:'当代艺术常常有争议。'},
+      {word:'contradict',phonetic:'/ˌkɒntrəˈdɪkt/',pos:'v.',def:'反驳；矛盾',ex:'The evidence contradicts his statement.',exCn:'证据与他的陈述相矛盾。'},
+      {word:'controversial',phonetic:'/ˌkɒntrəˈvɜːrʃl/',pos:'adj.',def:'有争议的',ex:'The policy remains highly controversial.',exCn:'这项政策仍然很有争议。'},
+      {word:'convention',phonetic:'/kənˈvenʃn/',pos:'n.',def:'惯例；大会',ex:'The convention attracted thousands of attendees.',exCn:'大会吸引了数千名参与者。'},
+      {word:'coordinate',phonetic:'/kəʊˈɔːdɪneɪt/',pos:'v.',def:'协调；配合',ex:'We need to coordinate our efforts.',exCn:'我们需要协调行动。'},
+      {word:'cornerstone',phonetic:'/ˈkɔːrnərstəʊn/',pos:'n.',def:'基石；基础',ex:'Education is the cornerstone of society.',exCn:'教育是社会的基石。'},
+      {word:'cumulative',phonetic:'/ˈkjuːmjələtɪv/',pos:'adj.',def:'累积的',ex:'The cumulative effect was significant.',exCn:'累积效应是显著的。'},
+      {word:'delegate',phonetic:'/ˈdelɪɡeɪt/',pos:'v.',def:'委派 n. 代表',ex:'A good manager knows how to delegate.',exCn:'好的管理者知道如何委派任务。'},
+      {word:'demographics',phonetic:'/ˌdeməˈɡræfɪks/',pos:'n.',def:'人口统计资料',ex:'Demographics influence market trends.',exCn:'人口统计数据影响市场趋势。'},
+      {word:'deploy',phonetic:'/dɪˈplɔɪ/',pos:'v.',def:'部署；调动',ex:'The company deployed new technology.',exCn:'公司部署了新技术。'},
+      {word:'derive',phonetic:'/dɪˈraɪv/',pos:'v.',def:'源于；获得',ex:'The word derives from Latin.',exCn:'这个词源于拉丁语。'},
+      {word:'devastating',phonetic:'/ˈdevəsteɪtɪŋ/',pos:'adj.',def:'毁灭性的',ex:'The earthquake had a devastating impact.',exCn:'地震造成了毁灭性的影响。'},
+      {word:'diminish',phonetic:'/dɪˈmɪnɪʃ/',pos:'v.',def:'减少；缩小',ex:'His influence has diminished over time.',exCn:'他的影响力随时间减弱了。'},
+      {word:'discipline',phonetic:'/ˈdɪsəplɪn/',pos:'n.',def:'纪律；学科',ex:'Self-discipline is key to success.',exCn:'自律是成功的关键。'},
+      {word:'diverse',phonetic:'/daɪˈvɜːrs/',pos:'adj.',def:'多样的；不同的',ex:'The city has a diverse population.',exCn:'这座城市人口多样化。'}
+    ]
+  },
+  'gre': {
+    id: 'gre',
+    name: 'GRE 核心词汇',
+    desc: 'GRE考试核心词汇，挑战极限',
+    icon: '📕',
+    words: [
+      {word:'abate',phonetic:'/əˈbeɪt/',pos:'v.',def:'减少；减弱',ex:'The storm began to abate by evening.',exCn:'到傍晚暴风雨开始减弱。'},
+      {word:'abdicate',phonetic:'/ˈæbdɪkeɪt/',pos:'v.',def:'退位；放弃',ex:'The king was forced to abdicate.',exCn:'国王被迫退位。'},
+      {word:'abjure',phonetic:'/əbˈdʒʊər/',pos:'v.',def:'发誓放弃；郑重拒绝',ex:'He abjured his former beliefs.',exCn:'他发誓放弃以前的信仰。'},
+      {word:'abstemious',phonetic:'/æbˈstiːmiəs/',pos:'adj.',def:'有节制的；节俭的',ex:'He led an abstemious lifestyle.',exCn:'他过着节制的生活方式。'},
+      {word:'acrimony',phonetic:'/ˈækrɪməni/',pos:'n.',def:'刻毒；激烈',ex:'The debate ended in acrimony.',exCn:'辩论以激烈的争吵告终。'},
+      {word:'acumen',phonetic:'/ˈækjʊmen/',pos:'n.',def:'敏锐；精明',ex:'She showed great business acumen.',exCn:'她展现了出色的商业敏锐度。'},
+      {word:'admonish',phonetic:'/ədˈmɒnɪʃ/',pos:'v.',def:'告诫；劝告',ex:'The teacher admonished the student.',exCn:'老师告诫了这名学生。'},
+      {word:'adulterate',phonetic:'/əˈdʌltəreɪt/',pos:'v.',def:'掺杂；掺假',ex:'The food was adulterated with chemicals.',exCn:'食物被掺入了化学物质。'},
+      {word:'affable',phonetic:'/ˈæfəbl/',pos:'adj.',def:'和蔼的；友善的',ex:'He is an affable and pleasant person.',exCn:'他是一个和蔼可亲的人。'},
+      {word:'alacrity',phonetic:'/əˈlækrəti/',pos:'n.',def:'敏捷；乐意',ex:'She accepted the invitation with alacrity.',exCn:'她欣然接受了邀请。'},
+      {word:'amalgamate',phonetic:'/əˈmælɡəmeɪt/',pos:'v.',def:'合并；融合',ex:'The two companies amalgamated last year.',exCn:'两家公司去年合并了。'},
+      {word:'ameliorate',phonetic:'/əˈmiːliəreɪt/',pos:'v.',def:'改善；改进',ex:'Reforms were introduced to ameliorate conditions.',exCn:'推行了改革以改善条件。'},
+      {word:'anachronism',phonetic:'/əˈnækrənɪzəm/',pos:'n.',def:'时代错误；过时之物',ex:'The law is an anachronism in modern society.',exCn:'这项法律在现代社会已过时。'},
+      {word:'anomaly',phonetic:'/əˈnɒməli/',pos:'n.',def:'异常；反常',ex:'The data showed several anomalies.',exCn:'数据显示了几处异常。'},
+      {word:'antipathy',phonetic:'/ænˈtɪpəθi/',pos:'n.',def:'反感；厌恶',ex:'She felt an antipathy toward dishonesty.',exCn:'她对不诚实感到厌恶。'},
+      {word:'apathy',phonetic:'/ˈæpəθi/',pos:'n.',def:'冷漠；无动于衷',ex:'Voter apathy is a serious problem.',exCn:'选民冷漠是一个严重的问题。'},
+      {word:'appease',phonetic:'/əˈpiːz/',pos:'v.',def:'安抚；平息',ex:'The government tried to appease the protesters.',exCn:'政府试图安抚抗议者。'},
+      {word:'approbation',phonetic:'/ˌæprəˈbeɪʃn/',pos:'n.',def:'认可；批准',ex:'The plan received the committee\'s approbation.',exCn:'计划获得了委员会的认可。'},
+      {word:'arbiter',phonetic:'/ˈɑːrbɪtər/',pos:'n.',def:'仲裁者；主宰者',ex:'Fashion is the arbiter of taste.',exCn:'时尚是品味的主宰者。'},
+      {word:'arcane',phonetic:'/ɑːrˈkeɪn/',pos:'adj.',def:'神秘的；晦涩的',ex:'The ritual was shrouded in arcane knowledge.',exCn:'这个仪式笼罩在神秘的知识中。'},
+      {word:'arduous',phonetic:'/ˈɑːrdjuəs/',pos:'adj.',def:'艰巨的；费力的',ex:'The journey was long and arduous.',exCn:'旅途漫长而艰辛。'},
+      {word:'ascetic',phonetic:'/əˈsetɪk/',pos:'adj.',def:'苦行的 n. 苦行者',ex:'He lived an ascetic life in the mountains.',exCn:'他在山中过着苦行的生活。'},
+      {word:'assiduous',phonetic:'/əˈsɪdjuəs/',pos:'adj.',def:'勤勉的；刻苦的',ex:'She was assiduous in her studies.',exCn:'她在学习上勤勉刻苦。'},
+      {word:'assuage',phonetic:'/əˈsweɪdʒ/',pos:'v.',def:'缓和；减轻',ex:'Nothing could assuage her grief.',exCn:'没有什么能减轻她的悲伤。'},
+      {word:'attenuate',phonetic:'/əˈtenjueɪt/',pos:'v.',def:'使变弱；稀释',ex:'The signal attenuates over distance.',exCn:'信号随距离而衰减。'},
+      {word:'audacious',phonetic:'/ɔːˈdeɪʃəs/',pos:'adj.',def:'大胆的；鲁莽的',ex:'The plan was audacious but feasible.',exCn:'这个计划大胆但可行。'},
+      {word:'auspicious',phonetic:'/ɔːˈspɪʃəs/',pos:'adj.',def:'吉祥的；有前途的',ex:'It was an auspicious beginning to the year.',exCn:'这是一年吉祥的开端。'},
+      {word:'avarice',phonetic:'/ˈævərɪs/',pos:'n.',def:'贪婪',ex:'His avarice led to his downfall.',exCn:'他的贪婪导致了他的败落。'},
+      {word:'axiom',phonetic:'/ˈæksiəm/',pos:'n.',def:'公理；格言',ex:'It is an axiom of economics that supply meets demand.',exCn:'供需相等是经济学的公理。'},
+      {word:'bolster',phonetic:'/ˈbəʊlstər/',pos:'v.',def:'支持；增强',ex:'New data bolsters the hypothesis.',exCn:'新数据支持了这一假说。'},
+      {word:'cacophony',phonetic:'/kəˈkɒfəni/',pos:'n.',def:'刺耳的声音；不和谐',ex:'A cacophony of car horns filled the street.',exCn:'刺耳的汽车喇叭声充满了街道。'},
+      {word:'caustic',phonetic:'/ˈkɔːstɪk/',pos:'adj.',def:'腐蚀性的；刻薄的',ex:'His caustic remarks hurt her feelings.',exCn:'他刻薄的话伤了她的感情。'},
+      {word:'chicanery',phonetic:'/ʃɪˈkeɪnəri/',pos:'n.',def:'诡计；狡辩',ex:'The politician was known for his chicanery.',exCn:'这位政客以诡计多端著称。'},
+      {word:'cogent',phonetic:'/ˈkəʊdʒənt/',pos:'adj.',def:'令人信服的',ex:'She presented a cogent argument.',exCn:'她提出了令人信服的论点。'},
+      {word:'contrite',phonetic:'/kənˈtraɪt/',pos:'adj.',def:'悔恨的；痛悔的',ex:'He seemed genuinely contrite about his behavior.',exCn:'他似乎对自己的行为真心悔过。'}
+    ]
+  }
+};
+
+// ========================================================================
+// ===== 应用状态管理 =====
+// ========================================================================
+const STORAGE_KEYS = {
+  CURRENT_BOOK: 'vm_currentBook',
+  WORD_PROGRESS: 'vm_wordProgress',
+  CHECKIN_DATA: 'vm_checkinData',
+  SETTINGS: 'vm_settings',
+  LEARNING_STATE: 'vm_learningState'
+};
+
+// 默认设置
+const DEFAULT_SETTINGS = {
+  dailyNew: 10,
+  dailyReview: 30
+};
+
+// 学习状态：new / learning / familiar / mastered
+const STATUS = { NEW: 'new', LEARNING: 'learning', FAMILIAR: 'familiar', MASTERED: 'mastered' };
+
+// 获取当前日期字符串 (YYYY-MM-DD)
+function todayStr() {
+  const d = new Date();
+  return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+}
+
+// 从 localStorage 加载数据
+function loadData(key, defaultVal) {
+  try {
+    const d = localStorage.getItem(key);
+    return d ? JSON.parse(d) : defaultVal;
+  } catch(e) {
+    return defaultVal;
+  }
+}
+
+// 保存数据到 localStorage
+function saveData(key, val) {
+  try {
+    localStorage.setItem(key, JSON.stringify(val));
+  } catch(e) {
+    console.warn('localStorage save failed:', e);
+  }
+}
+
+// 获取当前词书ID
+function getCurrentBookId() {
+  return loadData(STORAGE_KEYS.CURRENT_BOOK, 'cet4');
+}
+
+// 设置当前词书
+function setCurrentBookId(bookId) {
+  saveData(STORAGE_KEYS.CURRENT_BOOK, bookId);
+}
+
+// 获取所有单词进度 { "cet4::abandon": { ... } }
+function getAllProgress() {
+  return loadData(STORAGE_KEYS.WORD_PROGRESS, {});
+}
+
+// 保存所有进度
+function saveAllProgress(progress) {
+  saveData(STORAGE_KEYS.WORD_PROGRESS, progress);
+}
+
+// 获取某个单词的进度
+function getWordProgress(bookId, word) {
+  const key = `${bookId}::${word}`;
+  const all = getAllProgress();
+  return all[key] || {
+    status: STATUS.NEW,
+    easeFactor: 2.5,
+    interval: 0,
+    repetitions: 0,
+    nextReview: 0,
+    lastReview: 0,
+    learnDate: ''
+  };
+}
+
+// 保存某个单词的进度
+function setWordProgress(bookId, word, progress) {
+  const key = `${bookId}::${word}`;
+  const all = getAllProgress();
+  all[key] = progress;
+  saveAllProgress(all);
+}
+
+// 获取打卡数据 { "2024-01-15": { newWords: 5, reviewWords: 10, checked: true } }
+function getCheckinData() {
+  return loadData(STORAGE_KEYS.CHECKIN_DATA, {});
+}
+
+// 保存打卡数据
+function saveCheckinData(data) {
+  saveData(STORAGE_KEYS.CHECKIN_DATA, data);
+}
+
+// 获取设置
+function getSettings() {
+  return loadData(STORAGE_KEYS.SETTINGS, DEFAULT_SETTINGS);
+}
+
+// 保存设置
+function saveSettingsData(settings) {
+  saveData(STORAGE_KEYS.SETTINGS, settings);
+}
+
+// ========================================================================
+// ===== SM-2 间隔重复算法 =====
+// ========================================================================
+/**
+ * SM-2 变体算法
+ * quality: 0-5 评分
+ *   5 = 完美回忆
+ *   4 = 犹豫后正确
+ *   3 = 困难但回忆起来
+ *   2 = 错误但似曾相识
+ *   1 = 错误，毫无印象
+ *   0 = 完全不认识
+ */
+function sm2(progress, quality) {
+  let { easeFactor, interval, repetitions } = progress;
+
+  if (quality >= 3) {
+    // 回忆成功
+    if (repetitions === 0) {
+      interval = 1; // 1天后
+    } else if (repetitions === 1) {
+      interval = 6; // 6天后
+    } else {
+      interval = Math.round(interval * easeFactor);
+    }
+    repetitions++;
+  } else {
+    // 回忆失败，重置
+    repetitions = 0;
+    interval = 1;
+  }
+
+  // 更新 ease factor
+  easeFactor = easeFactor + (0.1 - (5 - quality) * (0.08 + (5 - quality) * 0.02));
+  if (easeFactor < 1.3) easeFactor = 1.3;
+
+  // 计算下次复习时间
+  const now = Date.now();
+  const nextReview = now + interval * 24 * 60 * 60 * 1000;
+
+  // 更新状态
+  let status = progress.status;
+  if (status === STATUS.NEW) status = STATUS.LEARNING;
+  else if (status === STATUS.LEARNING && quality >= 4 && repetitions >= 3) status = STATUS.FAMILIAR;
+  else if (status === STATUS.FAMILIAR && quality >= 4 && repetitions >= 5) status = STATUS.MASTERED;
+  // 如果答得太差，降级
+  if (quality <= 1 && status === STATUS.MASTERED) status = STATUS.FAMILIAR;
+  if (quality === 0 && status === STATUS.FAMILIAR) status = STATUS.LEARNING;
+
+  return {
+    ...progress,
+    easeFactor,
+    interval,
+    repetitions,
+    nextReview,
+    lastReview: now,
+    status
+  };
+}
+
+// ========================================================================
+// ===== 发音 (Web Speech API) =====
+// ========================================================================
+function speakWord(word, rate) {
+  if (!('speechSynthesis' in window)) {
+    showToast('您的浏览器不支持语音功能');
+    return;
+  }
+  window.speechSynthesis.cancel();
+  const utterance = new SpeechSynthesisUtterance(word);
+  utterance.lang = 'en-US';
+  utterance.rate = rate || 0.85;
+  utterance.pitch = 1;
+  window.speechSynthesis.speak(utterance);
+  return utterance;
+}
+
+// ========================================================================
+// ===== Toast 提示 =====
+// ========================================================================
+function showToast(msg, duration) {
+  const existing = document.querySelector('.toast');
+  if (existing) existing.remove();
+  const toast = document.createElement('div');
+  toast.className = 'toast';
+  toast.textContent = msg;
+  document.body.appendChild(toast);
+  setTimeout(() => toast.remove(), duration || 2000);
+}
+
+// ========================================================================
+// ===== 导航 =====
+// ========================================================================
+let currentPage = 'dashboard';
+
+function navigateTo(page) {
+  // 如果点击"学习"，但还没有学习队列，则初始化
+  if (page === 'learn') {
+    startLearning();
+    return;
+  }
+
+  currentPage = page;
+  document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+  document.getElementById(`page-${page}`).classList.add('active');
+  document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
+  document.querySelector(`.nav-item[data-page="${page}"]`)?.classList.add('active');
+
+  // 渲染对应页面
+  if (page === 'dashboard') renderDashboard();
+  else if (page === 'review') renderReviewModes();
+  else if (page === 'books') renderBooks();
+  else if (page === 'stats') renderStats();
+}
+
+// ========================================================================
+// ===== 仪表盘 =====
+// ========================================================================
+function renderDashboard() {
+  const bookId = getCurrentBookId();
+  const book = WORD_BOOKS[bookId];
+  const progress = getAllProgress();
+  const settings = getSettings();
+  const checkinData = getCheckinData();
+  const today = todayStr();
+
+  // 问候语
+  const hour = new Date().getHours();
+  let greeting = '今天也要加油哦 💪';
+  if (hour < 6) greeting = '夜深了，注意休息 🌙';
+  else if (hour < 12) greeting = '早安，新的一天开始了 ☀️';
+  else if (hour < 18) greeting = '下午好，继续加油 🌤️';
+  else greeting = '晚上好，温故知新 🌙';
+  document.getElementById('greeting-text').textContent = greeting;
+
+  // 计算今日统计
+  let todayNew = 0, todayReview = 0;
+  const todayData = checkinData[today] || {};
+  todayNew = todayData.newWords || 0;
+  todayReview = todayData.reviewWords || 0;
+
+  // 计算总学过/掌握
+  let totalLearned = 0, totalMastered = 0;
+  Object.keys(progress).forEach(key => {
+    if (key.startsWith(bookId + '::')) {
+      const p = progress[key];
+      if (p.status !== STATUS.NEW) totalLearned++;
+      if (p.status === STATUS.MASTERED) totalMastered++;
+    }
+  });
+
+  document.getElementById('stat-new').textContent = todayNew;
+  document.getElementById('stat-review').textContent = todayReview;
+  document.getElementById('stat-total').textContent = totalLearned;
+  document.getElementById('stat-mastered').textContent = totalMastered;
+
+  // 计算待学新词数量
+  const newWordsCount = getNewWordsQueue(bookId, settings.dailyNew).length;
+  const reviewWordsCount = getReviewWordsQueue(bookId, settings.dailyReview).length;
+
+  document.getElementById('task-new-count').textContent = newWordsCount;
+  document.getElementById('task-new-desc').textContent = newWordsCount > 0 ? `今日还需学习 ${newWordsCount} 个新词` : '今日新词已学完 🎉';
+  document.getElementById('task-review-count').textContent = reviewWordsCount;
+  document.getElementById('task-review-desc').textContent = reviewWordsCount > 0 ? `有 ${reviewWordsCount} 个单词待复习` : '暂无待复习 🎉';
+
+  // 打卡状态
+  const checkinBtn = document.getElementById('checkin-btn');
+  const checkinText = document.getElementById('checkin-text');
+  const checkinStatus = document.getElementById('checkin-status');
+  if (todayData.checked) {
+    checkinBtn.classList.add('checked');
+    checkinText.textContent = '已打卡';
+    checkinStatus.textContent = `今日已打卡 · 新学${todayNew}词 · 复习${todayReview}词`;
+  } else {
+    checkinBtn.classList.remove('checked');
+    checkinText.textContent = '打卡';
+    if (todayNew > 0 || todayReview > 0) {
+      checkinStatus.textContent = `完成学习后记得打卡哦`;
+    } else {
+      checkinStatus.textContent = '今日尚未打卡';
+    }
+  }
+
+  // 连续打卡天数
+  let streak = 0;
+  const d = new Date();
+  while (true) {
+    const ds = `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+    if (checkinData[ds] && checkinData[ds].checked) {
+      streak++;
+      d.setDate(d.getDate() - 1);
+    } else {
+      break;
+    }
+  }
+  document.getElementById('streak-count').textContent = streak;
+}
+
+// 处理打卡
+function handleCheckin() {
+  const today = todayStr();
+  const checkinData = getCheckinData();
+  if (checkinData[today] && checkinData[today].checked) {
+    showToast('今日已打卡 ✅');
+    return;
+  }
+  const checkinBtn = document.getElementById('checkin-btn');
+  checkinBtn.classList.add('checked');
+
+  if (!checkinData[today]) {
+    checkinData[today] = { newWords: 0, reviewWords: 0, checked: false };
+  }
+  checkinData[today].checked = true;
+  saveCheckinData(checkinData);
+
+  // 动画效果
+  checkinBtn.style.transform = 'scale(1.15)';
+  setTimeout(() => checkinBtn.style.transform = '', 300);
+  showToast('打卡成功！继续加油 🔥');
+  renderDashboard();
+}
+
+// ========================================================================
+// ===== 获取学习/复习队列 =====
+// ========================================================================
+
+// 获取今日待学新词队列
+function getNewWordsQueue(bookId, limit) {
+  const book = WORD_BOOKS[bookId];
+  if (!book) return [];
+  const progress = getAllProgress();
+  const queue = [];
+  for (const w of book.words) {
+    const key = `${bookId}::${w.word}`;
+    if (!progress[key] || progress[key].status === STATUS.NEW) {
+      queue.push(w);
+      if (queue.length >= limit) break;
+    }
+  }
+  return queue;
+}
+
+// 获取今日待复习单词队列
+function getReviewWordsQueue(bookId, limit) {
+  const book = WORD_BOOKS[bookId];
+  if (!book) return [];
+  const progress = getAllProgress();
+  const now = Date.now();
+  const queue = [];
+  for (const w of book.words) {
+    const key = `${bookId}::${w.word}`;
+    const p = progress[key];
+    if (p && p.status !== STATUS.NEW && p.nextReview <= now) {
+      queue.push({ ...w, progress: p });
+      if (queue.length >= limit) break;
+    }
+  }
+  return queue;
+}
+
+// ========================================================================
+// ===== 学习流程 =====
+// ========================================================================
+let learnQueue = [];
+let learnIndex = 0;
+let learnFlipped = false;
+let learnTodayNew = 0;
+
+function startLearning() {
+  const bookId = getCurrentBookId();
+  const settings = getSettings();
+
+  // 检查今日已学新词数
+  const checkinData = getCheckinData();
+  const today = todayStr();
+  const todayData = checkinData[today] || {};
+  const alreadyLearned = todayData.newWords || 0;
+  const remaining = Math.max(0, settings.dailyNew - alreadyLearned);
+
+  learnQueue = getNewWordsQueue(bookId, remaining);
+
+  if (learnQueue.length === 0) {
+    showToast('今日新词已学完！去复习吧 🔄');
+    return;
+  }
+
+  learnIndex = 0;
+  learnFlipped = false;
+  learnTodayNew = 0;
+
+  // 切换到学习页
+  currentPage = 'learn';
+  document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+  document.getElementById('page-learn').classList.add('active');
+  document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
+  document.querySelector('.nav-item[data-page=\"learn\"]')?.classList.add('active');
+
+  renderLearnCard();
+}
+
+function renderLearnCard() {
+  if (learnIndex >= learnQueue.length) {
+    finishLearning();
+    return;
+  }
+
+  const w = learnQueue[learnIndex];
+  learnFlipped = false;
+  const total = learnQueue.length;
+
+  document.getElementById('learn-progress').textContent = `${learnIndex + 1} / ${total}`;
+  document.getElementById('learn-progress-bar').style.width = `${((learnIndex + 1) / total) * 100}%`;
+
+  const container = document.getElementById('learn-card-container');
+  container.innerHTML = `
+    <div class="word-card" id="learn-word-card" onclick="flipLearnCard()">
+      <div class="front">
+        <div class="word-main">
+          <div class="word-text">${w.word}</div>
+          <div class="word-phonetic">${w.phonetic}</div>
+          <span class="word-pos">${w.pos}</span>
+          <div>
+            <button class="word-speak-btn" onclick="event.stopPropagation(); speakWord('${w.word}')" title="播放发音">🔊</button>
+          </div>
+        </div>
+        <div class="tap-hint">👆 点击翻转查看释义</div>
+      </div>
+      <div class="back">
+        <div class="word-main">
+          <div class="word-text">${w.word}</div>
+          <div class="word-phonetic">${w.phonetic}</div>
+        </div>
+        <div class="word-detail">
+          <div class="word-definition">${w.pos} ${w.def}</div>
+          <div class="word-example">
+            <div class="en">${w.ex}</div>
+            <div class="zh">${w.exCn}</div>
+          </div>
+        </div>
+        <div class="tap-hint">👆 点击翻转回正面</div>
+      </div>
+    </div>
+  `;
+
+  // 动作按钮
+  document.getElementById('learn-actions-container').innerHTML = `
+    <div class="learn-actions">
+      <button class="btn btn-warning" onclick="markLearnWord('hard')">😟 困难</button>
+      <button class="btn btn-primary" onclick="markLearnWord('normal')">😊 一般</button>
+      <button class="btn btn-success" onclick="markLearnWord('easy')">😄 简单</button>
+    </div>
+  `;
+
+  // 自动播放发音
+  setTimeout(() => speakWord(w.word, 0.8), 300);
+}
+
+function flipLearnCard() {
+  const card = document.getElementById('learn-word-card');
+  if (!card) return;
+  learnFlipped = !learnFlipped;
+  if (learnFlipped) {
+    card.classList.add('flipped');
+  } else {
+    card.classList.remove('flipped');
+  }
+}
+
+function markLearnWord(level) {
+  const w = learnQueue[learnIndex];
+  const bookId = getCurrentBookId();
+
+  // 获取当前进度
+  let progress = getWordProgress(bookId, w.word);
+
+  // 如果是新词，设置学习日期
+  if (progress.status === STATUS.NEW) {
+    progress.learnDate = todayStr();
+  }
+
+  // SM-2 评分映射：hard=2, normal=4, easy=5
+  const qualityMap = { hard: 2, normal: 4, easy: 5 };
+  progress = sm2(progress, qualityMap[level]);
+  setWordProgress(bookId, w.word, progress);
+
+  // 更新今日打卡数据
+  const checkinData = getCheckinData();
+  const today = todayStr();
+  if (!checkinData[today]) checkinData[today] = { newWords: 0, reviewWords: 0, checked: false };
+  checkinData[today].newWords = (checkinData[today].newWords || 0) + 1;
+  saveCheckinData(checkinData);
+
+  learnTodayNew++;
+  learnIndex++;
+  renderLearnCard();
+}
+
+function finishLearning() {
+  const container = document.getElementById('learn-card-container');
+  const actions = document.getElementById('learn-actions-container');
+  container.innerHTML = `
+    <div class="completion-screen">
+      <div class="completion-icon">🎉</div>
+      <h2>学习完成！</h2>
+      <p style="color:var(--text-secondary);margin-top:8px">本轮学习了 ${learnTodayNew} 个新单词</p>
+      <div class="completion-stats">
+        <div class="completion-stat">
+          <div class="val">${learnTodayNew}</div>
+          <div class="lbl">新学单词</div>
+        </div>
+      </div>
+      <div class="btn-group" style="justify-content:center;margin-top:20px">
+        <button class="btn btn-outline" onclick="navigateTo('dashboard')">返回首页</button>
+        <button class="btn btn-primary" onclick="navigateTo('review')">去复习</button>
+      </div>
+    </div>
+  `;
+  actions.innerHTML = '';
+}
+
+function exitLearning() {
+  navigateTo('dashboard');
+}
+
+// ========================================================================
+// ===== 复习模式 =====
+// ========================================================================
+let reviewMode = null; // 'choice' | 'spelling' | 'listening'
+let reviewQueue = [];
+let reviewIndex = 0;
+let reviewResults = []; // { word, correct, quality }
+
+function renderReviewModes() {
+  const bookId = getCurrentBookId();
+  const settings = getSettings();
+  const reviewCount = getReviewWordsQueue(bookId, settings.dailyReview).length;
+
+  // 更新导航按钮
+  document.getElementById('review-back-btn').style.display = 'none';
+  document.getElementById('review-mode-select').style.display = 'block';
+  document.getElementById('review-session').style.display = 'none';
+  document.getElementById('review-complete').style.display = 'none';
+
+  const modesDiv = document.getElementById('review-modes');
+  modesDiv.innerHTML = `
+    <div class="mode-card" onclick="startReview('choice')">
+      <div class="mode-icon">🎯</div>
+      <div class="mode-info">
+        <div class="mode-name">选择题模式</div>
+        <div class="mode-desc">看单词，从四个选项中选出正确释义</div>
+      </div>
+      <div class="mode-count">${reviewCount}题</div>
+    </div>
+    <div class="mode-card" onclick="startReview('spelling')">
+      <div class="mode-icon">✍️</div>
+      <div class="mode-info">
+        <div class="mode-name">拼写模式</div>
+        <div class="mode-desc">根据释义，拼写正确的单词</div>
+      </div>
+      <div class="mode-count">${reviewCount}题</div>
+    </div>
+    <div class="mode-card" onclick="startReview('listening')">
+      <div class="mode-icon">🎧</div>
+      <div class="mode-info">
+        <div class="mode-name">听音辨意模式</div>
+        <div class="mode-desc">听发音，从四个选项中选出正确释义</div>
+      </div>
+      <div class="mode-count">${reviewCount}题</div>
+    </div>
+  `;
+
+  if (reviewCount === 0) {
+    modesDiv.innerHTML = `
+      <div class="empty-state">
+        <div class="empty-icon">🎉</div>
+        <div class="empty-text">暂无待复习单词</div>
+        <button class="btn btn-primary" onclick="navigateTo('dashboard')">返回首页</button>
+      </div>
+    `;
+  }
+}
+
+function startReview(mode) {
+  const bookId = getCurrentBookId();
+  const settings = getSettings();
+  reviewMode = mode;
+  reviewQueue = getReviewWordsQueue(bookId, settings.dailyReview);
+  reviewIndex = 0;
+  reviewResults = [];
+
+  if (reviewQueue.length === 0) {
+    showToast('暂无待复习单词');
+    return;
+  }
+
+  // 切换UI
+  document.getElementById('review-mode-select').style.display = 'none';
+  document.getElementById('review-session').style.display = 'block';
+  document.getElementById('review-back-btn').style.display = 'inline-flex';
+  document.getElementById('review-complete').style.display = 'none';
+
+  renderReviewCard();
+}
+
+function renderReviewCard() {
+  if (reviewIndex >= reviewQueue.length) {
+    finishReview();
+    return;
+  }
+
+  const w = reviewQueue[reviewIndex];
+  const total = reviewQueue.length;
+
+  document.getElementById('review-count').textContent = `${reviewIndex + 1} / ${total}`;
+  document.getElementById('review-progress-bar').style.width = `${((reviewIndex + 1) / total) * 100}%`;
+
+  const area = document.getElementById('review-card-area');
+
+  if (reviewMode === 'choice') {
+    renderChoiceMode(area, w);
+  } else if (reviewMode === 'spelling') {
+    renderSpellingMode(area, w);
+  } else if (reviewMode === 'listening') {
+    renderListeningMode(area, w);
+  }
+}
+
+// 获取干扰选项（从当前词书取其他词的释义）
+function getDistractors(bookId, currentWord, count) {
+  const book = WORD_BOOKS[bookId];
+  const others = book.words.filter(w => w.word !== currentWord);
+  const shuffled = others.sort(() => Math.random() - 0.5);
+  return shuffled.slice(0, count).map(w => w.def);
+}
+
+// ===== 选择题模式 =====
+function renderChoiceMode(area, w) {
+  const bookId = getCurrentBookId();
+  const distractors = getDistractors(bookId, w.word, 3);
+  const options = [w.def, ...distractors].sort(() => Math.random() - 0.5);
+  const labels = ['A', 'B', 'C', 'D'];
+
+  area.innerHTML = `
+    <div class="review-card">
+      <div class="review-question">
+        ${w.word}
+        <span class="phonetic-hint">${w.phonetic}</span>
+      </div>
+      <button class="word-speak-btn" style="margin:0 auto 16px" onclick="speakWord('${w.word}')">🔊</button>
+      <div class="choices" id="choices-container">
+        ${options.map((opt, i) => `
+          <button class="choice-btn" onclick="checkChoice(this, '${escapeHtml(w.def)}', '${escapeHtml(opt)}')">
+            <span class="choice-label">${labels[i]}</span>${opt}
+          </button>
+        `).join('')}
+      </div>
+      <div id="review-feedback-area"></div>
+    </div>
+  `;
+
+  setTimeout(() => speakWord(w.word), 300);
+}
+
+function checkChoice(btn, correctDef, selectedDef) {
+  const btns = document.querySelectorAll('#choices-container .choice-btn');
+  // 防止重复点击
+  if (btns[0].disabled) return;
+
+  const isCorrect = selectedDef === correctDef;
+  btn.disabled = true;
+
+  // 标记所有按钮
+  btns.forEach(b => {
+    b.style.pointerEvents = 'none';
+    // 找到正确答案并高亮
+    if (b.textContent.includes(correctDef)) {
+      b.classList.add('correct');
+    }
+  });
+
+  if (!isCorrect) {
+    btn.classList.add('wrong');
+  }
+
+  // 显示反馈
+  const w = reviewQueue[reviewIndex];
+  const feedbackArea = document.getElementById('review-feedback-area');
+  feedbackArea.innerHTML = `
+    <div class="review-feedback ${isCorrect ? 'correct' : 'wrong'}">
+      <div class="feedback-word">${w.word} ${w.phonetic}</div>
+      <div class="feedback-def">${w.pos} ${w.def}</div>
+    </div>
+    <div style="margin-top:12px">
+      <button class="btn btn-primary btn-block" onclick="nextReviewCard(${isCorrect ? 4 : 1})">继续</button>
+    </div>
+  `;
+
+  // 更新今日复习计数
+  updateReviewCount();
+}
+
+// ===== 拼写模式 =====
+function renderSpellingMode(area, w) {
+  area.innerHTML = `
+    <div class="review-card">
+      <div class="review-question" style="flex-direction:column">
+        <div style="font-size:.85rem;color:var(--text-secondary);margin-bottom:4px">根据释义拼写单词</div>
+        <div style="font-size:1.1rem;font-weight:600">${w.pos} ${w.def}</div>
+      </div>
+      <div class="spelling-input">
+        <input type="text" id="spelling-answer" placeholder="输入单词..." autocomplete="off" autocapitalize="off" spellcheck="false">
+      </div>
+      <button class="btn btn-primary btn-block" onclick="checkSpelling()" id="spelling-submit">确认</button>
+      <div id="review-feedback-area"></div>
+    </div>
+  `;
+
+  // 回车提交
+  const input = document.getElementById('spelling-answer');
+  input.focus();
+  input.addEventListener('keydown', function(e) {
+    if (e.key === 'Enter') checkSpelling();
+  });
+}
+
+function checkSpelling() {
+  const input = document.getElementById('spelling-answer');
+  if (!input || input.disabled) return;
+
+  const w = reviewQueue[reviewIndex];
+  const answer = input.value.trim().toLowerCase();
+  const correct = w.word.toLowerCase();
+
+  const isCorrect = answer === correct;
+
+  if (isCorrect) {
+    input.classList.add('correct');
+  } else {
+    input.classList.add('wrong');
+    input.value = correct;
+  }
+  input.disabled = true;
+
+  const feedbackArea = document.getElementById('review-feedback-area');
+  feedbackArea.innerHTML = `
+    <div class="review-feedback ${isCorrect ? 'correct' : 'wrong'}">
+      <div class="feedback-word">${w.word} ${w.phonetic}</div>
+      <div class="feedback-def">${w.pos} ${w.def}</div>
+      ${!isCorrect ? `<div style="margin-top:4px;font-size:.8rem">例句：${w.ex}</div>` : ''}
+    </div>
+    <div style="margin-top:12px">
+      <button class="btn btn-primary btn-block" onclick="nextReviewCard(${isCorrect ? 4 : 1})">继续</button>
+    </div>
+  `;
+
+  updateReviewCount();
+}
+
+// ===== 听音辨意模式 =====
+function renderListeningMode(area, w) {
+  const bookId = getCurrentBookId();
+  const distractors = getDistractors(bookId, w.word, 3);
+  const options = [w.def, ...distractors].sort(() => Math.random() - 0.5);
+  const labels = ['A', 'B', 'C', 'D'];
+
+  area.innerHTML = `
+    <div class="review-card">
+      <button class="listen-btn-large" onclick="speakWord('${w.word}', 0.7)" id="listen-play-btn">
+        <span class="listen-icon">🎧</span>
+        <span class="listen-text">点击播放发音</span>
+      </button>
+      <div class="choices" id="choices-container">
+        ${options.map((opt, i) => `
+          <button class="choice-btn" onclick="checkChoice(this, '${escapeHtml(w.def)}', '${escapeHtml(opt)}')">
+            <span class="choice-label">${labels[i]}</span>${opt}
+          </button>
+        `).join('')}
+      </div>
+      <div id="review-feedback-area"></div>
+    </div>
+  `;
+
+  setTimeout(() => speakWord(w.word, 0.7), 500);
+}
+
+function nextReviewCard(quality) {
+  const w = reviewQueue[reviewIndex];
+  const bookId = getCurrentBookId();
+
+  // SM-2 更新
+  let progress = w.progress || getWordProgress(bookId, w.word);
+  progress = sm2(progress, quality);
+  setWordProgress(bookId, w.word, progress);
+
+  // 记录结果
+  reviewResults.push({
+    word: w.word,
+    correct: quality >= 3,
+    quality
+  });
+
+  reviewIndex++;
+  renderReviewCard();
+}
+
+function updateReviewCount() {
+  const checkinData = getCheckinData();
+  const today = todayStr();
+  if (!checkinData[today]) checkinData[today] = { newWords: 0, reviewWords: 0, checked: false };
+  // 延迟到 nextReviewCard 时统一计数，这里不做更新
+}
+
+function finishReview() {
+  // 更新复习计数
+  const checkinData = getCheckinData();
+  const today = todayStr();
+  if (!checkinData[today]) checkinData[today] = { newWords: 0, reviewWords: 0, checked: false };
+  checkinData[today].reviewWords = (checkinData[today].reviewWords || 0) + reviewResults.length;
+  saveCheckinData(checkinData);
+
+  // 显示完成页面
+  const correctCount = reviewResults.filter(r => r.correct).length;
+  const total = reviewResults.length;
+  const accuracy = total > 0 ? Math.round((correctCount / total) * 100) : 0;
+
+  document.getElementById('review-session').style.display = 'none';
+  document.getElementById('review-complete').style.display = 'block';
+  document.getElementById('review-back-btn').style.display = 'none';
+
+  const completeDiv = document.getElementById('review-complete');
+  completeDiv.innerHTML = `
+    <div class="completion-screen">
+      <div class="completion-icon">${accuracy >= 80 ? '🏆' : accuracy >= 60 ? '👍' : '💪'}</div>
+      <h2>复习完成！</h2>
+      <div class="completion-stats">
+        <div class="completion-stat">
+          <div class="val">${total}</div>
+          <div class="lbl">复习单词</div>
+        </div>
+        <div class="completion-stat">
+          <div class="val">${correctCount}</div>
+          <div class="lbl">回答正确</div>
+        </div>
+        <div class="completion-stat">
+          <div class="val">${accuracy}%</div>
+          <div class="lbl">正确率</div>
+        </div>
+      </div>
+      <div style="margin-top:16px">
+        ${reviewResults.map(r => `
+          <div class="result-card">
+            <span class="result-word">${r.word}</span>
+            <span class="result-status ${r.correct ? 'mastered' : 'learning'}">${r.correct ? '✓ 正确' : '✗ 错误'}</span>
+          </div>
+        `).join('')}
+      </div>
+      <div class="btn-group" style="justify-content:center;margin-top:20px">
+        <button class="btn btn-outline" onclick="navigateTo('dashboard')">返回首页</button>
+        <button class="btn btn-primary" onclick="renderReviewModes()">继续复习</button>
+      </div>
+    </div>
+  `;
+}
+
+function exitReview() {
+  if (document.getElementById('review-session').style.display === 'block' || document.getElementById('review-complete').style.display === 'block') {
+    renderReviewModes();
+  } else {
+    navigateTo('dashboard');
+  }
+}
+
+// HTML转义辅助
+function escapeHtml(str) {
+  return str.replace(/'/g, "\\'").replace(/"/g, '&quot;');
+}
+
+// ========================================================================
+// ===== 词书页面 =====
+// ========================================================================
+function renderBooks() {
+  const currentBookId = getCurrentBookId();
+  const progress = getAllProgress();
+
+  const booksDiv = document.getElementById('books-list');
+  booksDiv.innerHTML = '';
+
+  Object.values(WORD_BOOKS).forEach(book => {
+    const totalWords = book.words.length;
+    let learned = 0, mastered = 0;
+    book.words.forEach(w => {
+      const key = `${book.id}::${w.word}`;
+      const p = progress[key];
+      if (p && p.status !== STATUS.NEW) learned++;
+      if (p && p.status === STATUS.MASTERED) mastered++;
+    });
+    const pct = totalWords > 0 ? Math.round((learned / totalWords) * 100) : 0;
+
+    const isActive = book.id === currentBookId;
+    const isCompleted = pct === 100;
+
+    const card = document.createElement('div');
+    card.className = `book-card ${isActive ? 'active' : ''}`;
+    card.onclick = () => selectBook(book.id);
+    card.innerHTML = `
+      <div class="book-icon">${book.icon}</div>
+      <div class="book-info">
+        <div class="book-name">${book.name}</div>
+        <div class="book-desc">${book.desc}</div>
+        <div class="progress-bar" style="margin-top:6px">
+          <div class="fill" style="width:${pct}%"></div>
+        </div>
+        <div class="book-progress">已学 ${learned}/${totalWords} · 掌握 ${mastered} · ${pct}%</div>
+      </div>
+      <span class="book-status ${isActive ? 'using' : ''} ${isCompleted ? 'completed' : ''}">${isActive ? '使用中' : isCompleted ? '已完成' : '选择'}</span>
+    `;
+    booksDiv.appendChild(card);
+  });
+}
+
+function selectBook(bookId) {
+  if (getCurrentBookId() !== bookId) {
+    setCurrentBookId(bookId);
+    showToast(`已切换到 ${WORD_BOOKS[bookId].name}`);
+    renderBooks();
+  }
+}
+
+// ========================================================================
+// ===== 统计页面 =====
+// ========================================================================
+let statsCalendarMonth = new Date().getMonth();
+let statsCalendarYear = new Date().getFullYear();
+
+function renderStats() {
+  const bookId = getCurrentBookId();
+  const book = WORD_BOOKS[bookId];
+  const progress = getAllProgress();
+  const checkinData = getCheckinData();
+
+  // 概览统计
+  let totalLearned = 0, totalMastered = 0, totalFamiliar = 0, totalLearning = 0;
+  book.words.forEach(w => {
+    const key = `${bookId}::${w.word}`;
+    const p = progress[key];
+    if (p) {
+      if (p.status !== STATUS.NEW) totalLearned++;
+      if (p.status === STATUS.MASTERED) totalMastered++;
+      if (p.status === STATUS.FAMILIAR) totalFamiliar++;
+      if (p.status === STATUS.LEARNING) totalLearning++;
+    }
+  });
+
+  // 总打卡天数
+  const totalDays = Object.values(checkinData).filter(d => d.checked).length;
+
+  document.getElementById('stats-overview').innerHTML = `
+    <div class="stat-item"><div class="stat-val">${totalDays}</div><div class="stat-lbl">学习天数</div></div>
+    <div class="stat-item"><div class="stat-val">${totalLearned}</div><div class="stat-lbl">已学单词</div></div>
+    <div class="stat-item"><div class="stat-val">${totalMastered}</div><div class="stat-lbl">已掌握</div></div>
+  `;
+
+  // 掌握程度分布
+  const total = book.words.length;
+  const newCount = total - totalLearned;
+  const learningCount = totalLearning;
+  const familiarCount = totalFamiliar;
+  const masteredCount = totalMastered;
+
+  const masteryBar = document.getElementById('mastery-bar');
+  masteryBar.innerHTML = `
+    <div class="seg new" style="width:${(newCount/total)*100}%" title="未学 ${newCount}"></div>
+    <div class="seg learning" style="width:${(learningCount/total)*100}%" title="学习中 ${learningCount}"></div>
+    <div class="seg familiar" style="width:${(familiarCount/total)*100}%" title="熟悉 ${familiarCount}"></div>
+    <div class="seg mastered" style="width:${(masteredCount/total)*100}%" title="已掌握 ${masteredCount}"></div>
+  `;
+
+  document.getElementById('mastery-legend').innerHTML = `
+    <div class="legend-item"><span class="legend-dot new"></span>未学 ${newCount}</div>
+    <div class="legend-item"><span class="legend-dot learning"></span>学习中 ${learningCount}</div>
+    <div class="legend-item"><span class="legend-dot familiar"></span>熟悉 ${familiarCount}</div>
+    <div class="legend-item"><span class="legend-dot mastered"></span>已掌握 ${masteredCount}</div>
+  `;
+
+  // 日历
+  renderCalendar();
+
+  // 近7日图表
+  renderDailyChart();
+}
+
+function renderCalendar() {
+  const checkinData = getCheckinData();
+  const year = statsCalendarYear;
+  const month = statsCalendarMonth;
+
+  document.getElementById('calendar-month').textContent = `${year}年${month + 1}月`;
+
+  const firstDay = new Date(year, month, 1).getDay();
+  const daysInMonth = new Date(year, month + 1, 0).getDate();
+  const today = new Date();
+  const todayStr_ = `${today.getFullYear()}-${String(today.getMonth()+1).padStart(2,'0')}-${String(today.getDate()).padStart(2,'0')}`;
+
+  let html = '';
+  const dayLabels = ['日','一','二','三','四','五','六'];
+  dayLabels.forEach(l => html += `<div class="day-label">${l}</div>`);
+
+  // 空白格
+  for (let i = 0; i < firstDay; i++) {
+    html += `<div class="day-cell empty"></div>`;
+  }
+
+  // 日期格
+  for (let d = 1; d <= daysInMonth; d++) {
+    const ds = `${year}-${String(month+1).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
+    const isChecked = checkinData[ds] && checkinData[ds].checked;
+    const isToday = ds === todayStr_;
+    let cls = 'day-cell';
+    if (isChecked) cls += ' checked';
+    if (isToday) cls += ' today';
+    html += `<div class="${cls}" title="${isChecked ? '已打卡' : ''}">${d}</div>`;
+  }
+
+  document.getElementById('calendar-grid').innerHTML = html;
+}
+
+function changeMonth(delta) {
+  statsCalendarMonth += delta;
+  if (statsCalendarMonth > 11) { statsCalendarMonth = 0; statsCalendarYear++; }
+  if (statsCalendarMonth < 0) { statsCalendarMonth = 11; statsCalendarYear--; }
+  renderCalendar();
+}
+
+function renderDailyChart() {
+  const checkinData = getCheckinData();
+  const days = [];
+  for (let i = 6; i >= 0; i--) {
+    const d = new Date();
+    d.setDate(d.getDate() - i);
+    const ds = `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+    const data = checkinData[ds] || { newWords: 0, reviewWords: 0 };
+    days.push({
+      label: `${d.getMonth()+1}/${d.getDate()}`,
+      count: (data.newWords || 0) + (data.reviewWords || 0)
+    });
+  }
+
+  const max = Math.max(...days.map(d => d.count), 1);
+  const chartDiv = document.getElementById('daily-chart');
+  const labelsDiv = document.getElementById('daily-chart-labels');
+
+  chartDiv.innerHTML = days.map(d => {
+    const h = Math.max(2, (d.count / max) * 100);
+    return `<div class="chart-bar" style="height:${h}%" title="${d.count}词"></div>`;
+  }).join('');
+
+  labelsDiv.innerHTML = days.map(d => `<span>${d.label}</span>`).join('');
+}
+
+// ========================================================================
+// ===== 设置 =====
+// ========================================================================
+function showSettings() {
+  const settings = getSettings();
+  document.getElementById('setting-daily-new').value = settings.dailyNew;
+  document.getElementById('setting-daily-review').value = settings.dailyReview;
+  document.getElementById('settings-modal').classList.add('show');
+}
+
+function saveSettings() {
+  const dailyNew = parseInt(document.getElementById('setting-daily-new').value) || 10;
+  const dailyReview = parseInt(document.getElementById('setting-daily-review').value) || 30;
+  saveSettingsData({ dailyNew: Math.max(5, Math.min(50, dailyNew)), dailyReview: Math.max(10, Math.min(100, dailyReview)) });
+  document.getElementById('settings-modal').classList.remove('show');
+  showToast('设置已保存');
+  renderDashboard();
+}
+
+function resetAllData() {
+  if (confirm('确定要清除所有学习数据吗？此操作不可恢复！')) {
+    localStorage.removeItem(STORAGE_KEYS.WORD_PROGRESS);
+    localStorage.removeItem(STORAGE_KEYS.CHECKIN_DATA);
+    localStorage.removeItem(STORAGE_KEYS.LEARNING_STATE);
+    document.getElementById('settings-modal').classList.remove('show');
+    showToast('学习数据已重置');
+    renderDashboard();
+  }
+}
+
+// 点击模态框外部关闭
+document.getElementById('settings-modal').addEventListener('click', function(e) {
+  if (e.target === this) this.classList.remove('show');
+});
+
+// ========================================================================
+// ===== 初始化 =====
+// ========================================================================
+function init() {
+  // 确保 settings 存在
+  if (!localStorage.getItem(STORAGE_KEYS.SETTINGS)) {
+    saveSettingsData(DEFAULT_SETTINGS);
+  }
+
+  renderDashboard();
+
+  // 快捷键支持
+  document.addEventListener('keydown', function(e) {
+    if (currentPage === 'learn' && learnQueue.length > 0 && learnIndex < learnQueue.length) {
+      if (e.key === ' ' || e.key === 'Enter') {
+        e.preventDefault();
+        flipLearnCard();
+      } else if (e.key === '1') {
+        markLearnWord('hard');
+      } else if (e.key === '2') {
+        markLearnWord('normal');
+      } else if (e.key === '3') {
+        markLearnWord('easy');
+      }
+    }
+  });
+}
+
+// 启动
+init();
+</script>
+</body>
+</html>

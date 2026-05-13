@@ -1,0 +1,141 @@
+# VocabMaster - 智能英语单词学习应用
+
+基于 **Python FastAPI + SQLite** 的本地单词学习应用，采用 **三轮记忆法** 帮助高效记忆英语单词。
+
+## ✨ 功能特性
+
+### 核心学习功能
+- 📖 **多词书支持**：CET-4、CET-6、雅思、GRE 四本核心词书
+- 🧠 **三轮记忆法**：初次学习 → 间隔复习（艾宾浩斯遗忘曲线） → 输出验证
+- ⏰ **艾宾浩斯遗忘曲线**：5分钟/30分钟/12小时/1天/2天/4天/7天/15天 + SM-2动态间隔
+- 🎯 **强干扰项选择题**：基于形近词/义近词/混淆组生成干扰项
+- ✍️ **拼写验证**：第三轮输出验证，拼写正确才算掌握
+
+### 词书管理
+- 📥 **词书导入**：支持 Excel (.xlsx/.xls) 和 CSV 文件导入，拖拽上传
+- 🧬 **词根词缀串联**：按词根分组展示关联单词，帮助批量记忆
+- 🌟 **常考释义高亮**：常考释义加粗+高亮，重点突出
+
+### AI 功能（可选）
+- 🤖 **AI 完形填空**：基于今日所学单词生成完形填空练习
+- ✍️ **AI 作文优化**：语法纠正、用词优化、句式改进、评分（支持文本/图片/文件输入）
+- 🔧 **AI 配置**：支持 OpenAI 兼容接口，可配置 API Key/Base URL/Model
+
+### 数据与统计
+- 📅 **打卡日历**：记录学习轨迹，连续打卡统计
+- 📊 **三轮进度统计**：各阶段单词数量一目了然
+- ⏰ **智能复习计划**：按优先级排序，标注紧迫度
+- 🔧 **每日新词上限**：可自定义每日新学单词数量（默认15个）
+
+## 🏗️ 项目结构
+
+```
+vocab-master/
+├── main.py              # FastAPI 应用入口
+├── requirements.txt     # Python 依赖
+├── database.py          # SQLite 数据库初始化、连接（含迁移）
+├── models.py            # Pydantic 数据模型
+├── init_db.py           # 数据库初始化脚本（建表、导入词库、词根、混淆组）
+├── routers/
+│   ├── __init__.py
+│   ├── words.py         # 单词/词书 API + 导入功能
+│   ├── study.py         # 学习 API（三轮记忆法 + SM-2）
+│   ├── review.py        # 复习 API（强干扰项 + 复习计划）
+│   ├── checkin.py       # 打卡 API
+│   ├── stats.py         # 统计 API
+│   ├── roots.py         # 词根词缀 API
+│   └── skills.py        # AI Skills API（完形填空/作文/LLM配置）
+├── skills/
+│   ├── __init__.py
+│   ├── base.py          # Skill 基类
+│   ├── ai_cloze/
+│   │   ├── __init__.py
+│   │   ├── skill.py     # 完形填空 Skill
+│   │   └── prompt.py    # Prompt 模板
+│   └── ai_writing/
+│       ├── __init__.py
+│       ├── skill.py     # 作文优化 Skill
+│       └── prompt.py    # Prompt 模板
+├── static/
+│   ├── css/
+│   │   └── style.css    # 样式
+│   └── js/
+│       └── app.js       # 前端逻辑
+├── templates/
+│   └── index.html       # 主页面模板
+└── README.md            # 本文件
+```
+
+## 🚀 快速启动
+
+### 1. 安装依赖
+
+```bash
+pip install -r requirements.txt
+```
+
+### 2. 初始化数据库（首次运行）
+
+```bash
+python init_db.py
+```
+
+### 3. 启动应用
+
+```bash
+python main.py
+```
+
+访问 http://localhost:8000 即可使用。
+
+### 4. 配置 AI 功能（可选）
+
+在设置页面配置：
+- **API Key**：你的大模型 API 密钥
+- **API Base URL**：OpenAI 兼容接口地址（默认 https://api.openai.com/v1）
+- **Model**：模型名称（默认 gpt-3.5-turbo）
+
+未配置 API Key 时，AI 功能会给出友好提示，不影响其他功能使用。
+
+## 📥 导入词书
+
+支持通过 Excel 或 CSV 文件导入自定义词书：
+
+**文件格式要求：**
+- 第一行为表头
+- 必须包含 `word` 列
+- 可选列：`phonetic`（音标）、`part_of_speech`（词性）、`definition_cn`（中文释义）、`example_sentence`（例句）、`example_translation`（例句翻译）、`root`（词根）、`high_freq_def`（常考释义）
+
+**新增功能：**
+- 🏷️ **词书命名**：导入时可自定义词书名称，留空则使用文件名
+- 📋 **导入模板**：项目提供标准CSV模板文件供参考
+
+## 🧠 三轮记忆法
+
+### 第一轮：初次学习
+展示单词 + 音标 + **常考释义高亮** + 真实例句，用户点击"我认识了"进入下一词。
+
+### 第二轮：间隔复习
+基于艾宾浩斯遗忘曲线自动安排复习时间（5分钟→30分钟→12小时→1天→2天→4天→7天→15天→SM-2动态），自评掌握程度。
+
+### 第三轮：输出验证
+经过至少2次间隔复习后进入验证阶段：
+- **拼写验证**：给出释义，拼写单词
+- **选择释义**：四选一（含强干扰项）
+
+通过验证 → 标记为"已掌握"，未通过 → 重新回到间隔复习。
+
+## 🔧 依赖说明
+
+| 依赖 | 用途 |
+|------|------|
+| fastapi | Web 框架 |
+| uvicorn | ASGI 服务器 |
+| jinja2 | 模板引擎 |
+| openpyxl | Excel 文件读取 |
+| openai | AI 大模型调用 |
+| python-multipart | 文件上传支持 |
+
+## 📄 License
+
+MIT
