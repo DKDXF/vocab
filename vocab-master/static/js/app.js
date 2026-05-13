@@ -1329,11 +1329,15 @@ async function submitCloze() {
 
   try {
     const result = await api('skills/cloze/submit', { method: 'POST', body: JSON.stringify({ answers, cloze_data: clozeData }) });
-    document.getElementById('cloze-result').innerHTML = `
-      <div style="text-align:center;padding:16px;background:var(--primary-bg);border-radius:var(--radius-sm)">
+    
+    // 显示分数
+    let resultHtml = `
+      <div style="text-align:center;padding:16px;background:var(--primary-bg);border-radius:var(--radius-sm);margin-bottom:16px">
         <div style="font-size:1.5rem;font-weight:700;color:var(--primary)">${result.score}分</div>
         <div style="font-size:.85rem;color:var(--text-secondary)">正确 ${result.correct}/${result.total}</div>
       </div>`;
+    
+    // 标记答案
     result.results.forEach(r => {
       const blankEl = document.getElementById(`blank-${r.index}`);
       if (blankEl) {
@@ -1342,6 +1346,30 @@ async function submitCloze() {
         blankEl.textContent = r.correct_answer;
       }
     });
+    
+    // 显示解析
+    resultHtml += '<div style="margin-top:20px"><h3 style="font-size:1rem;margin-bottom:12px">📝 答案解析</h3>';
+    result.results.forEach(r => {
+      resultHtml += `
+        <div style="background:var(--card);padding:12px;border-radius:var(--radius-sm);margin-bottom:8px;box-shadow:var(--shadow)">
+          <div style="font-weight:600;margin-bottom:4px">第${r.index + 1}题：${escapeHtml(r.correct_answer)}</div>
+          <div style="font-size:.85rem;color:var(--text-secondary)">${escapeHtml(r.explanation || '')}</div>
+        </div>`;
+    });
+    resultHtml += '</div>';
+    
+    // 显示全文翻译
+    if (result.translation) {
+      resultHtml += `
+        <div style="margin-top:20px">
+          <h3 style="font-size:1rem;margin-bottom:12px">🌐 全文翻译</h3>
+          <div style="background:var(--card);padding:16px;border-radius:var(--radius-sm);box-shadow:var(--shadow);line-height:1.8;font-size:.9rem">
+            ${escapeHtml(result.translation)}
+          </div>
+        </div>`;
+    }
+    
+    document.getElementById('cloze-result').innerHTML = resultHtml;
   } catch (e) { showToast('提交失败'); }
 }
 

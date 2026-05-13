@@ -150,7 +150,7 @@ async def generate_cloze(word_ids: Optional[str] = None):
 
 @router.post("/skills/cloze/submit", summary="提交完形填空答案")
 async def submit_cloze(request_body: dict):
-    """提交完形填空答案，返回得分"""
+    """提交完形填空答案，返回得分和解析"""
     answers = request_body.get("answers", {})
     cloze_data = request_body.get("cloze_data", {})
     blanks = cloze_data.get("blanks", [])
@@ -170,6 +170,7 @@ async def submit_cloze(request_body: dict):
             "correct": is_correct,
             "user_answer": user_answer,
             "correct_answer": blank.get("answer", ""),
+            "explanation": blank.get("explanation", ""),
         })
 
     return {
@@ -177,6 +178,7 @@ async def submit_cloze(request_body: dict):
         "correct": correct,
         "score": round((correct / total) * 100) if total > 0 else 0,
         "results": results,
+        "translation": cloze_data.get("translation", ""),
     }
 
 
