@@ -126,6 +126,55 @@ def select_book(book_id: str):
         close_db(conn)
 
 
+@router.delete("/{book_id}", summary="删除词书")
+def delete_book(book_id: str):
+    """删除指定词书及其所有单词、学习进度"""
+    conn = get_db()
+    try:
+        # 检查词书是否存在
+        book = conn.execute("SELECT id, name FROM word_books WHERE id = ?", (book_id,)).fetchone()
+        if not book:
+            raise HTTPException(status_code=404, detail="词书不存在")
+        
+        # 不允许删除系统默认词书（可选）
+        if book_id in ["cet4", "cet6", "kaoyan", "ielts", "toefl"]:
+            raise HTTPException(status_code=403, detail="系统默认词书不可删除")
+        
+        # 如果删除的是当前词书，需要重置为默认词书
+        current_row = conn.execute(
+            "SELECT value FROM settings WHERE key = 'current_book_id'"
+        ).fetchone()
+        if current_row and current_row["value"] == book_id:
+            conn.execute(
+                "INSERT INTO settings (key, value) VALUES ('current_book_id', ?) "
+                "ON CONFLICT(key) DO UPDATE SET value = ?",
+                ("cet4", "cet4"),
+            )
+        
+        # 删除词书（级联删除相关数据）
+        # 1. 删除单词进度
+        conn.execute(
+            """DELETE FROM word_progress 
+               WHERE word_id IN (SELECT id FROM words WHERE book_id = ?)""",
+            (book_id,),
+        )
+        # 2. 删除学习记录
+        conn.execute(
+            """DELETE FROM study_records 
+               WHERE word_id IN (SELECT id FROM words WHERE book_id = ?)""",
+            (book_id,),
+        )
+        # 3. 删除单词
+        conn.execute("DELETE FROM words WHERE book_id = ?", (book_id,))
+        # 4. 删除词书
+        conn.execute("DELETE FROM word_books WHERE id = ?", (book_id,))
+        
+        conn.commit()
+        return {"message": f"已删除词书: {book['name']}", "deleted_book_id": book_id}
+    finally:
+        close_db(conn)
+
+
 @router.post("/import", summary="导入词书（支持 Excel/CSV）")
 async def import_book(file: UploadFile = File(...), book_name: str = None):
     """

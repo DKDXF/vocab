@@ -15,16 +15,14 @@ def _get_setting(conn, key: str, default: str) -> str:
     return row["value"] if row else default
 
 
-# ==================== 艾宾浩斯遗忘曲线间隔 ====================
+# ==================== 艾宾浩斯遗忘曲线间隔（长期记忆法）====================
 EBBINGHAUS_INTERVALS = [
-    timedelta(minutes=5),    # 第1次复习：5分钟
-    timedelta(minutes=30),   # 第2次复习：30分钟
-    timedelta(hours=12),     # 第3次复习：12小时
-    timedelta(days=1),       # 第4次复习：1天
-    timedelta(days=2),       # 第5次复习：2天
-    timedelta(days=4),       # 第6次复习：4天
-    timedelta(days=7),       # 第7次复习：7天
-    timedelta(days=15),      # 第8次复习：15天
+    timedelta(days=1),       # 第1次复习：1天
+    timedelta(days=2),       # 第2次复习：2天
+    timedelta(days=4),       # 第3次复习：4天
+    timedelta(days=7),       # 第4次复习：7天
+    timedelta(days=15),      # 第5次复习：15天
+    timedelta(days=30),      # 第6次复习：30天
 ]
 
 

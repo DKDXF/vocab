@@ -894,7 +894,6 @@ function renderReviewCard() {
 
 function renderChoiceMode(area, w, options, correctIndex, isRevisit, progress) {
   const labels = ['A', 'B', 'C', 'D'];
-  const enhancements = isRevisit ? '' : renderWordEnhancements(w, progress);
   const revisitTag = isRevisit ? '<span class="review-tag revisit">重温</span>' : '';
 
   area.innerHTML = `
@@ -905,7 +904,7 @@ function renderChoiceMode(area, w, options, correctIndex, isRevisit, progress) {
         ${options.map((opt, i) => `<button class="choice-btn" data-index="${i}" onclick="checkChoice(this,${correctIndex},${i})"><span class="choice-label">${labels[i]}</span>${escapeHtml(opt)}</button>`).join('')}
       </div>
       <div id="review-feedback-area"></div>
-      ${!isRevisit ? `<div style="margin-top:8px">${enhancements}</div>` : ''}
+      <div id="review-enhancements-area" style="display:none"></div>
     </div>`;
   setTimeout(() => speakWord(w.word), 300);
 }
@@ -920,12 +919,24 @@ function checkChoice(btn, correctIndex, selectedIndex) {
   const item = reviewQueue[reviewIndex];
   const w = item.word;
   const isRevisit = item._isRevisit || false;
+  
+  // 显示反馈
   document.getElementById('review-feedback-area').innerHTML = `
     <div class="review-feedback ${isCorrect ? 'correct' : 'wrong'}">
       <div class="feedback-word">${escapeHtml(w.word)} ${escapeHtml(w.phonetic)}</div>
       <div class="feedback-def">${escapeHtml(w.part_of_speech)} ${escapeHtml(w.definition_cn)}</div>
     </div>
     <div style="margin-top:12px"><button class="btn btn-primary btn-block" onclick="nextReviewCard(${isCorrect ? 4 : 1})">继续</button></div>`;
+  
+  // 显示单词增强内容（词根、例句等）
+  if (!isRevisit && item.progress) {
+    const enhancements = renderWordEnhancements(w, item.progress);
+    const enhancementsArea = document.getElementById('review-enhancements-area');
+    if (enhancementsArea) {
+      enhancementsArea.innerHTML = enhancements;
+      enhancementsArea.style.display = 'block';
+    }
+  }
 }
 
 function renderSpellingMode(area, w, isRevisit, progress) {
@@ -1110,7 +1121,13 @@ async function renderBooks() {
   try {
     const books = await api('books');
     const booksDiv = document.getElementById('books-list');
-    booksDiv.innerHTML = books.map(book => `
+    booksDiv.innerHTML = books.map(book => {
+      // 判断是否可以删除（非系统默认词书且不是当前使用的）
+      const systemBooks = ['cet4', 'cet6', 'kaoyan', 'ielts', 'toefl'];
+      const isSystemBook = systemBooks.includes(book.id);
+      const canDelete = !isSystemBook && !book.is_current;
+      
+      return `
       <div class="book-card ${book.is_current ? 'active' : ''}" onclick="selectBook('${book.id}')">
         <div class="book-icon">${book.icon}</div>
         <div class="book-info">
@@ -1124,8 +1141,12 @@ async function renderBooks() {
             记忆率: <span style="color:var(--info)">历史${book.history_rate}%</span> · <span style="color:var(--success)">近期${book.recent_rate}%</span>
           </div>
         </div>
-        <span class="book-status ${book.is_current ? 'using' : ''} ${book.progress_pct === 100 ? 'completed' : ''}">${book.is_current ? '使用中' : book.progress_pct === 100 ? '已完成' : '选择'}</span>
-      </div>`).join('');
+        <div style="display:flex;align-items:center;gap:8px">
+          <span class="book-status ${book.is_current ? 'using' : ''} ${book.progress_pct === 100 ? 'completed' : ''}">${book.is_current ? '使用中' : book.progress_pct === 100 ? '已完成' : '选择'}</span>
+          ${canDelete ? `<button class="btn btn-ghost btn-sm" onclick="event.stopPropagation();deleteBook('${book.id}', '${escapeHtml(book.name)}')" title="删除词书" style="color:var(--danger);padding:4px 8px">🗑️</button>` : ''}
+        </div>
+      </div>`;
+    }).join('');
   } catch (e) { console.error(e); }
 }
 
@@ -1135,6 +1156,20 @@ async function selectBook(bookId) {
     showToast('已切换词书');
     renderBooks();
   } catch (e) { showToast('切换词书失败'); }
+}
+
+async function deleteBook(bookId, bookName) {
+  if (!confirm(`确定要删除词书「${bookName}」吗？\n\n此操作将删除：\n- 所有单词\n- 学习进度\n- 学习记录\n\n此操作不可恢复！`)) {
+    return;
+  }
+  
+  try {
+    await api(`books/${bookId}`, { method: 'DELETE' });
+    showToast('词书已删除');
+    renderBooks();
+  } catch (e) {
+    showToast('删除失败: ' + (e.message || '未知错误'));
+  }
 }
 
 // ===== 导入词书 =====
@@ -1731,58 +1766,6 @@ async function fetchSmartMnemonic(word, wordId) {
 // ========================================================================
 async function init() {
   await renderDashboard();
-  
-  // 【新增】全局键盘快捷键监听
-  document.addEventListener('keydown', function(e) {
-    // 如果焦点在输入框内，不触发快捷键
-    if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') return;
-
-    if (currentPage === 'learn' && learnQueue.length > 0 && learnIndex < learnQueue.length) {
-      const card = document.getElementById('learn-card');
-      const isFlipped = card && card.classList.contains('flipped');
-
-      // 1. 空格或回车：翻转卡片
-      if (e.key === ' ' || e.key === 'Enter') { 
-        e.preventDefault(); 
-        flipLearnCard(); 
-      }
-      
-      // 2. 数字键 1-4：评估反馈（仅在卡片翻转后有效）
-      if (isFlipped) {
-        if (e.key === '1') handleRating(0); // 陌生
-        if (e.key === '2') handleRating(1); // 模糊
-        if (e.key === '3') handleRating(2); // 熟悉
-        if (e.key === '4') handleRating(3); // 掌握
-      }
-
-      // 3. M 键：一键获取全网助记 (Mnemonic)
-      if ((e.key === 'm' || e.key === 'M') && !isFlipped) {
-        const currentWord = learnQueue[learnIndex];
-        if (currentWord) {
-          e.preventDefault();
-          fetchSmartMnemonic(currentWord.word, currentWord.id);
-        }
-      }
-
-      // 4. 左右方向键：切换单词
-      if (e.key === 'ArrowLeft' && learnIndex > 0) {
-        e.preventDefault();
-        learnIndex--;
-        renderLearnCard(learnIndex);
-      }
-      if (e.key === 'ArrowRight' && learnIndex < learnQueue.length - 1) {
-        e.preventDefault();
-        learnIndex++;
-        renderLearnCard(learnIndex);
-      }
-    }
-    
-    // 5. N 键：打开笔记 (全局)
-    if (e.key === 'n' || e.key === 'N') {
-      const activeWordId = document.querySelector('.note-edit-btn');
-      if (activeWordId) { activeWordId.click(); e.preventDefault(); }
-    }
-  });
 }
 
 init();

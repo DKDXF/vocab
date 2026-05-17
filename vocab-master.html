@@ -1815,22 +1815,6 @@ function init() {
   }
 
   renderDashboard();
-
-  // 快捷键支持
-  document.addEventListener('keydown', function(e) {
-    if (currentPage === 'learn' && learnQueue.length > 0 && learnIndex < learnQueue.length) {
-      if (e.key === ' ' || e.key === 'Enter') {
-        e.preventDefault();
-        flipLearnCard();
-      } else if (e.key === '1') {
-        markLearnWord('hard');
-      } else if (e.key === '2') {
-        markLearnWord('normal');
-      } else if (e.key === '3') {
-        markLearnWord('easy');
-      }
-    }
-  });
 }
 
 // 启动
