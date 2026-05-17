@@ -11,67 +11,58 @@ from typing import Optional
 def crawl_dict_cn(word: str) -> dict:
     """
     从海词词典 (dict.cn) 抓取简短释义和例句
-    
-    Args:
-        word: 要查询的单词
-        
-    Returns:
-        {
-            "success": bool,
-            "example_sentence": str,
-            "example_translation": str,
-            "definition": str
-        }
+    【优化】增加了更稳健的 HTML 解析逻辑和错误日志
     """
     try:
         url = f"http://dict.cn/mini.php?q={word}"
         headers = {
-            "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36"
+            "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
+            "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
         }
         response = requests.get(url, headers=headers, timeout=10)
         response.encoding = "utf-8"
         
-        if response.status_code != 200:
-            return {"success": False, "error": "请求失败"}
+        if response.status_code != 200 or len(response.text) < 50:
+            return {"success": False, "error": "请求失败或内容为空"}
         
-        soup = BeautifulSoup(response.text, "html.parser")
+        soup = BeautifulSoup(response.text, "lxml")
         body = soup.find("body")
         
         if not body:
             return {"success": False, "error": "未找到内容"}
         
-        # 清理HTML标签，获取纯文本
-        text = body.get_text(separator="\n", strip=True)
-        
-        # 尝试提取例句（通常包含英文句子和中文翻译）
-        lines = [line.strip() for line in text.split("\n") if line.strip()]
+        # 尝试提取所有段落或行，比纯文本分割更准确
+        lines = [line.get_text(strip=True) for line in body.find_all(['p', 'div', 'li']) if line.get_text(strip=True)]
+        if not lines:
+            lines = body.get_text(separator="\n", strip=True).split("\n")
+            lines = [l.strip() for l in lines if l.strip()]
         
         example_sentence = ""
         example_translation = ""
-        definition = ""
         
-        # 简单启发式提取：寻找包含句号或逗号的较长行作为例句
+        # 【优化】更精准的启发式提取
         for i, line in enumerate(lines):
-            if len(line) > 20 and ("." in line or "," in line):
-                # 可能是英文例句
-                example_sentence = line
-                # 下一行可能是中文翻译
-                if i + 1 < len(lines) and any("\u4e00" <= c <= "\u9fff" for c in lines[i + 1]):
-                    example_translation = lines[i + 1]
-                break
-        
-        # 第一行通常是释义
-        if lines:
-            definition = lines[0]
+            # 寻找包含目标单词且长度适中的英文行
+            if len(line) > 15 and word.lower() in line.lower() and any(c.isalpha() for c in line):
+                # 简单过滤掉纯释义行（通常很短）
+                if len(line) > 20:
+                    example_sentence = line
+                    # 检查下一行是否为中文翻译
+                    if i + 1 < len(lines):
+                        next_line = lines[i + 1]
+                        if next_line and all("\u4e00" <= c <= "\u9fff" or c in '，。！？' for c in next_line):
+                            example_translation = next_line
+                    break
         
         return {
             "success": True,
             "example_sentence": example_sentence,
             "example_translation": example_translation,
-            "definition": definition,
+            "definition": lines[0] if lines else "",
         }
         
     except Exception as e:
+        print(f"[Crawler Error] dict.cn failed for '{word}': {e}")
         return {"success": False, "error": str(e)}
 
 
@@ -203,18 +194,7 @@ def crawl_mnemonic_dictionary(word: str) -> dict:
 def crawl_word_data(word: str) -> dict:
     """
     综合爬取单词的所有数据（助记法、例句等）
-    
-    Args:
-        word: 要查询的单词
-        
-    Returns:
-        {
-            "success": bool,
-            "mnemonic": str,           # 最佳助记法
-            "example_sentence": str,   # 例句
-            "example_translation": str,# 例句翻译
-            "sources": dict            # 各来源的原始数据
-        }
+    【优化】增加了数据有效性校验和多源 fallback 逻辑
     """
     result = {
         "success": False,
@@ -229,7 +209,6 @@ def crawl_word_data(word: str) -> dict:
     result["sources"]["mnemonic_dictionary"] = mnemonic_result
     
     if mnemonic_result["success"] and mnemonic_result["mnemonics"]:
-        # 选择点赞最多的助记法
         best_mnemonic = mnemonic_result["mnemonics"][0]
         result["mnemonic"] = best_mnemonic["text"]
     
@@ -238,12 +217,20 @@ def crawl_word_data(word: str) -> dict:
     result["sources"]["dict_cn"] = dict_cn_result
     
     if dict_cn_result["success"]:
-        if dict_cn_result["example_sentence"]:
-            result["example_sentence"] = dict_cn_result["example_sentence"]
-        if dict_cn_result["example_translation"]:
-            result["example_translation"] = dict_cn_result["example_translation"]
+        ex_sent = dict_cn_result.get("example_sentence", "")
+        # 【优化】校验：例句必须包含单词本身，且长度大于10个字符
+        if ex_sent and len(ex_sent) > 10 and word.lower() in ex_sent.lower():
+            result["example_sentence"] = ex_sent
+            result["example_translation"] = dict_cn_result.get("example_translation", "")
     
-    # 判断是否成功获取到至少一项数据
+    # 【优化】Fallback：如果没抓到助记法，尝试用词根拆解代替
+    if not result["mnemonic"]:
+        wordsand_result = crawl_wordsand(word)
+        result["sources"]["wordsand"] = wordsand_result
+        if wordsand_result["success"] and wordsand_result["root_analysis"]:
+            result["mnemonic"] = f"[词根拆解] {wordsand_result['root_analysis']}"
+    
+    # 判断是否成功获取到至少一项有效数据
     if result["mnemonic"] or result["example_sentence"]:
         result["success"] = True
     

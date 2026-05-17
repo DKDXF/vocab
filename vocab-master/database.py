@@ -118,6 +118,18 @@ CREATE TABLE IF NOT EXISTS users (
 
 CREATE INDEX IF NOT EXISTS idx_users_username ON users(username);
 
+CREATE TABLE IF NOT EXISTS sessions (
+    id              INTEGER PRIMARY KEY AUTOINCREMENT,
+    session_token   TEXT NOT NULL UNIQUE,
+    user_id         INTEGER NOT NULL,
+    created_at      TEXT NOT NULL,
+    expires_at      TEXT NOT NULL,
+    FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+);
+
+CREATE INDEX IF NOT EXISTS idx_sessions_token ON sessions(session_token);
+CREATE INDEX IF NOT EXISTS idx_sessions_user_id ON sessions(user_id);
+
 -- 索引：加速按词书查询单词、按状态查询进度
 CREATE INDEX IF NOT EXISTS idx_words_book_id ON words(book_id);
 CREATE INDEX IF NOT EXISTS idx_word_progress_status ON word_progress(status);

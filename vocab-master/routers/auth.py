@@ -4,11 +4,63 @@
 import hashlib
 import secrets
 from datetime import datetime
-from fastapi import APIRouter, HTTPException, Response, Request
+from fastapi import APIRouter, HTTPException, Response, Request, Depends
 from pydantic import BaseModel
 from database import get_db, close_db
 
 router = APIRouter(prefix="/api/auth", tags=["用户认证"])
+
+
+# ==================== 依赖注入：认证中间件 ====================
+def get_current_user(request: Request):
+    """
+    依赖注入函数：验证用户登录状态
+    
+    使用方式：在需要认证的接口中添加参数 `current_user: dict = Depends(get_current_user)`
+    
+    Returns:
+        dict: 包含 user_id 和 username 的用户信息
+        
+    Raises:
+        HTTPException: 401 未授权
+    """
+    session_token = request.cookies.get("session_token")
+    
+    if not session_token:
+        raise HTTPException(status_code=401, detail="未登录，请先登录")
+    
+    conn = get_db()
+    try:
+        # 从 sessions 表中验证 token
+        session = conn.execute(
+            "SELECT user_id, expires_at FROM sessions WHERE session_token = ?",
+            (session_token,)
+        ).fetchone()
+        
+        if not session:
+            raise HTTPException(status_code=401, detail="会话已过期，请重新登录")
+        
+        # 检查是否过期
+        from datetime import datetime
+        expires_at = datetime.fromisoformat(session["expires_at"])
+        if datetime.now() > expires_at:
+            # 删除过期会话
+            conn.execute("DELETE FROM sessions WHERE session_token = ?", (session_token,))
+            conn.commit()
+            raise HTTPException(status_code=401, detail="会话已过期，请重新登录")
+        
+        # 获取用户信息
+        user = conn.execute(
+            "SELECT id, username FROM users WHERE id = ?",
+            (session["user_id"],)
+        ).fetchone()
+        
+        if not user:
+            raise HTTPException(status_code=401, detail="用户不存在")
+        
+        return {"user_id": user["id"], "username": user["username"]}
+    finally:
+        close_db(conn)
 
 
 # ==================== 密码加密工具 ====================
@@ -156,6 +208,10 @@ def login(request: LoginRequest, response: Response):
         
         # 设置会话 Cookie（简单实现，生产环境应使用 JWT）
         session_token = secrets.token_urlsafe(32)
+        expires_at = datetime.now().replace(hour=0, minute=0, second=0) 
+        from datetime import timedelta
+        expires_at = expires_at + timedelta(days=7)  # 7天后过期
+        
         response.set_cookie(
             key="session_token",
             value=session_token,
@@ -163,6 +219,13 @@ def login(request: LoginRequest, response: Response):
             max_age=7 * 24 * 60 * 60,  # 7天过期
             samesite="lax"
         )
+        
+        # 存储会话到数据库
+        conn.execute(
+            "INSERT INTO sessions (session_token, user_id, created_at, expires_at) VALUES (?, ?, ?, ?)",
+            (session_token, user["id"], datetime.now().isoformat(), expires_at.isoformat())
+        )
+        conn.commit()
         
         return AuthResponse(
             success=True,
@@ -180,30 +243,34 @@ def login(request: LoginRequest, response: Response):
 
 
 @router.post("/logout", summary="用户登出")
-def logout(response: Response):
-    """清除会话 Cookie"""
+def logout(request: Request, response: Response):
+    """清除会话 Cookie 并删除数据库中的会话记录"""
+    session_token = request.cookies.get("session_token")
+    
+    if session_token:
+        conn = get_db()
+        try:
+            conn.execute("DELETE FROM sessions WHERE session_token = ?", (session_token,))
+            conn.commit()
+        finally:
+            close_db(conn)
+    
     response.delete_cookie(key="session_token")
     return {"success": True, "message": "已登出"}
 
 
 @router.get("/me", summary="获取当前用户信息")
-def get_current_user(request: Request):
+def get_current_user_info(current_user: dict = Depends(get_current_user)):
     """
     获取当前登录用户的信息
     
     需要携带有效的 session_token Cookie
     """
-    session_token = request.cookies.get("session_token")
-    
-    if not session_token:
-        raise HTTPException(status_code=401, detail="未登录")
-    
-    # 简单实现：实际项目中应该验证 session_token 的有效性
-    # 这里暂时返回一个占位响应
     return {
         "success": True,
         "message": "已登录",
-        # TODO: 从数据库中查询真实的用户信息
+        "user_id": current_user["user_id"],
+        "username": current_user["username"],
     }
 
 

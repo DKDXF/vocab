@@ -13,6 +13,13 @@ async function api(path, options = {}) {
   const isFormData = options.body instanceof FormData;
   const headers = isFormData ? {} : { 'Content-Type': 'application/json' };
   const resp = await fetch(url, { headers, ...options });
+  
+  // 处理 401 未授权错误
+  if (resp.status === 401) {
+    window.location.href = '/login';
+    throw new Error('未登录，请先登录');
+  }
+  
   if (!resp.ok) {
     let err;
     try { err = await resp.json(); } catch { err = await resp.text(); }
@@ -438,6 +445,14 @@ function renderLearnCard() {
 
   const enhancements = renderWordEnhancements(w, null, false);
 
+  // 【新增】智能助记按钮
+  const crawlerBtnHtml = `
+    <div style="margin-top:12px;text-align:center">
+      <button type="button" id="crawler-btn-${w.id}" class="btn btn-ghost btn-sm" onclick="event.preventDefault(); event.stopPropagation(); fetchSmartMnemonic('${escapeHtml(w.word)}', ${w.id})">
+        ✨ 一键获取全网助记
+      </button>
+    </div>`;
+
   // 第一轮：提供多个选项让用户评估掌握程度
   const wordId = w.id;
   const score = learnWordScores[wordId] || {correct: 0, total: 0};
@@ -472,6 +487,7 @@ function renderLearnCard() {
           </div>
           ${enhancements}
           ${accuracyBadge}
+          ${crawlerBtnHtml}
         </div>
         <div class="tap-hint">👆 点击翻转回正面</div>
       </div>
@@ -1649,15 +1665,119 @@ if (dropZone) {
 }
 
 // ========================================================================
+// ===== 智能爬虫功能 (Smart Crawler) =====
+// ========================================================================
+
+/**
+ * 一键获取单词的助记法和例句
+ */
+async function fetchSmartMnemonic(word, wordId) {
+  const btn = document.getElementById(`crawler-btn-${wordId}`);
+  if (!btn) return;
+
+  const originalText = btn.innerHTML;
+  btn.innerHTML = '🕷️ 正在全网搜索...';
+  btn.disabled = true;
+
+  try {
+    console.log(`[Crawler] 开始爬取: ${word}`);
+    const resp = await fetch('/api/crawler/crawl', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ word: word, save_to_db: true })
+    });
+    
+    if (!resp.ok) {
+      const errData = await resp.json().catch(() => ({}));
+      throw new Error(errData.detail || `HTTP ${resp.status}`);
+    }
+    
+    const data = await resp.json();
+    console.log('[Crawler] 结果:', data);
+
+    if (data.success) {
+      let msg = '✅ 数据已更新';
+      if (data.mnemonic && data.example_sentence) msg = '✨ 助记与例句均已找到！';
+      else if (data.mnemonic) msg = '💡 已找到趣味助记法';
+      else if (data.example_sentence) msg = '📖 已补充经典例句';
+      
+      showToast(msg);
+      
+      // 【优化】如果当前正在学习这个单词，立即更新卡片显示
+      if (currentPage === 'learn' && learnQueue.length > 0) {
+        const currentWord = learnQueue[learnIndex];
+        if (currentWord && currentWord.word.toLowerCase() === word.toLowerCase()) {
+          // 更新本地数据以便重新渲染
+          currentWord.example_sentence = data.example_sentence || currentWord.example_sentence;
+          currentWord.example_translation = data.example_translation || currentWord.example_translation;
+          currentWord.mnemonic = data.mnemonic || currentWord.mnemonic;
+          renderLearnCard(learnIndex);
+        }
+      }
+    } else {
+      showToast('⚠️ 暂未找到相关助记，请稍后再试');
+    }
+  } catch (e) {
+    console.error('[Crawler Error]', e);
+    showToast(`❌ 爬取异常: ${e.message}`);
+  } finally {
+    btn.innerHTML = originalText;
+    btn.disabled = false;
+  }
+}
+
+// ========================================================================
 // ===== 初始化 =====
 // ========================================================================
 async function init() {
   await renderDashboard();
+  
+  // 【新增】全局键盘快捷键监听
   document.addEventListener('keydown', function(e) {
+    // 如果焦点在输入框内，不触发快捷键
+    if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') return;
+
     if (currentPage === 'learn' && learnQueue.length > 0 && learnIndex < learnQueue.length) {
-      if (e.key === ' ' || e.key === 'Enter') { e.preventDefault(); flipLearnCard(); }
+      const card = document.getElementById('learn-card');
+      const isFlipped = card && card.classList.contains('flipped');
+
+      // 1. 空格或回车：翻转卡片
+      if (e.key === ' ' || e.key === 'Enter') { 
+        e.preventDefault(); 
+        flipLearnCard(); 
+      }
+      
+      // 2. 数字键 1-4：评估反馈（仅在卡片翻转后有效）
+      if (isFlipped) {
+        if (e.key === '1') handleRating(0); // 陌生
+        if (e.key === '2') handleRating(1); // 模糊
+        if (e.key === '3') handleRating(2); // 熟悉
+        if (e.key === '4') handleRating(3); // 掌握
+      }
+
+      // 3. M 键：一键获取全网助记 (Mnemonic)
+      if ((e.key === 'm' || e.key === 'M') && !isFlipped) {
+        const currentWord = learnQueue[learnIndex];
+        if (currentWord) {
+          e.preventDefault();
+          fetchSmartMnemonic(currentWord.word, currentWord.id);
+        }
+      }
+
+      // 4. 左右方向键：切换单词
+      if (e.key === 'ArrowLeft' && learnIndex > 0) {
+        e.preventDefault();
+        learnIndex--;
+        renderLearnCard(learnIndex);
+      }
+      if (e.key === 'ArrowRight' && learnIndex < learnQueue.length - 1) {
+        e.preventDefault();
+        learnIndex++;
+        renderLearnCard(learnIndex);
+      }
     }
-    // 快捷键 N 打开笔记
+    
+    // 5. N 键：打开笔记 (全局)
     if (e.key === 'n' || e.key === 'N') {
       const activeWordId = document.querySelector('.note-edit-btn');
       if (activeWordId) { activeWordId.click(); e.preventDefault(); }

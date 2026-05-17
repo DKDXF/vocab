@@ -29,8 +29,8 @@ def crawl_word(request: CrawlRequest):
     """
     从第三方词典网站爬取单词的助记法和例句
     
-    - 如果数据库中已有数据，可选择直接返回或重新爬取
-    - 支持保存到数据库供后续使用
+    - 优先从数据库返回已有数据（缓存命中）
+    - 数据库无数据时才执行爬取
     """
     word = request.word.strip().lower()
     
@@ -39,56 +39,60 @@ def crawl_word(request: CrawlRequest):
     
     conn = get_db()
     try:
-        # 检查数据库中是否已有该单词的数据
+        # 【优化】检查数据库中是否已有完整数据
         existing = conn.execute(
             "SELECT id, mnemonic, example_sentence, example_translation FROM words WHERE LOWER(word) = ?",
             (word,),
         ).fetchone()
         
-        # 如果已有数据且不强制重新爬取，直接返回
-        if existing and not request.save_to_db:
+        # 如果已有完整数据，直接返回（实现秒开）
+        if existing and existing["mnemonic"] and existing["example_sentence"]:
             return CrawlResponse(
                 success=True,
                 word=word,
-                mnemonic=existing["mnemonic"] or "",
-                example_sentence=existing["example_sentence"] or "",
+                mnemonic=existing["mnemonic"],
+                example_sentence=existing["example_sentence"],
                 example_translation=existing["example_translation"] or "",
-                message="从数据库返回已有数据",
+                message="✅ 已从缓存加载（无需联网）",
             )
         
         # 执行爬取
         crawl_result = crawl_word_data(word)
         
         if not crawl_result["success"]:
+            # 爬取失败但有旧数据也返回
+            if existing:
+                return CrawlResponse(
+                    success=True,
+                    word=word,
+                    mnemonic=existing["mnemonic"] or "",
+                    example_sentence=existing["example_sentence"] or "",
+                    example_translation=existing["example_translation"] or "",
+                    message="⚠️ 网络不佳，返回历史数据",
+                )
             return CrawlResponse(
                 success=False,
                 word=word,
-                message="爬取失败，未找到相关数据",
+                message="❌ 爬取失败，未找到相关数据",
             )
         
-        # 如果指定保存到数据库且单词已存在，更新数据
+        # 保存到数据库
         if request.save_to_db and existing:
             updates = []
             params = []
-            
             if crawl_result["mnemonic"]:
                 updates.append("mnemonic = ?")
                 params.append(crawl_result["mnemonic"])
-            
             if crawl_result["example_sentence"]:
                 updates.append("example_sentence = ?")
                 params.append(crawl_result["example_sentence"])
-            
             if crawl_result["example_translation"]:
                 updates.append("example_translation = ?")
                 params.append(crawl_result["example_translation"])
             
             if updates:
                 params.append(existing["id"])
-                conn.execute(
-                    f"UPDATE words SET {', '.join(updates)} WHERE id = ?",
-                    params,
-                )
+                conn.execute(f"UPDATE words SET {', '.join(updates)} WHERE id = ?", params)
                 conn.commit()
         
         return CrawlResponse(
@@ -97,7 +101,7 @@ def crawl_word(request: CrawlRequest):
             mnemonic=crawl_result["mnemonic"],
             example_sentence=crawl_result["example_sentence"],
             example_translation=crawl_result["example_translation"],
-            message="爬取成功" + ("并已保存到数据库" if request.save_to_db else ""),
+            message="✅ 爬取成功并已保存",
         )
         
     except Exception as e:
